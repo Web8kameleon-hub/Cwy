@@ -1,0 +1,63 @@
+{
+  "name": "cwy",
+  "displayName": "CWY",
+  "description": "Offline-first system mapping and integrity analysis for VS Code",
+  "version": "0.0.2",
+  "publisher": "webultrathinking",
+  "author": "webultrathinking",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webultrathinking/cwy"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onCommand:cwy.showOverview",
+    "onCommand:cwy.scan",
+    "onCommand:cwy.integrity",
+    "onCommand:cwy.fix",
+    "onCommand:cwy.refresh"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "cwy.showOverview",
+        "title": "CWY: Show Overview"
+      },
+      {
+        "command": "cwy.scan",
+        "title": "CWY: Scan Project"
+      },
+      {
+        "command": "cwy.integrity",
+        "title": "CWY: Check Integrity"
+      },
+      {
+        "command": "cwy.fix",
+        "title": "CWY: Detect Fixes"
+      },
+      {
+        "command": "cwy.refresh",
+        "title": "CWY: Refresh Overview"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "echo 'no lint configured'"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "sharp": "^0.34.5",
+    "typescript": "^5.2.2"
+  }
+}

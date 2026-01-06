@@ -1,0 +1,13 @@
+.git
+.gitignore
+node_modules/
+src/
+*.ts
+*.map
+tsconfig.json
+convert-icon.js
+generate-icon.ps1
+icon-temp.svg
+icon.svg
+README.md
+.vscodeignore

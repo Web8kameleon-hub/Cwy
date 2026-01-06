@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Background -->
+  <rect width="128" height="128" fill="#ffffff" rx="16"/>
+  
+  <!-- Border -->
+  <rect x="4" y="4" width="120" height="120" fill="none" stroke="#0f172a" stroke-width="2" rx="12"/>
+  
+  <!-- Electric waves (3 layers) -->
+  <path d="M 20 50 Q 35 40, 50 50 T 80 50 T 108 50" 
+        fill="none" stroke="#0ea5e9" stroke-width="3" opacity="0.6"/>
+  <path d="M 20 64 Q 35 54, 50 64 T 80 64 T 108 64" 
+        fill="none" stroke="#0ea5e9" stroke-width="3" opacity="0.4"/>
+  <path d="M 20 78 Q 35 68, 50 78 T 80 78 T 108 78" 
+        fill="none" stroke="#0ea5e9" stroke-width="3" opacity="0.2"/>
+  
+  <!-- CWY text -->
+  <text x="64" y="105" 
+        font-family="system-ui, -apple-system, sans-serif" 
+        font-size="28" 
+        font-weight="700" 
+        text-anchor="middle" 
+        fill="#0f172a"
+        letter-spacing="-1">CWY</text>
+  
+  <!-- Signal dots (3 animated indicators) -->
+  <circle cx="30" cy="30" r="4" fill="#0ea5e9">
+    <animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="45" cy="30" r="4" fill="#0ea5e9">
+    <animate attributeName="opacity" values="1;0.3;1" dur="2s" begin="0.4s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="60" cy="30" r="4" fill="#0ea5e9">
+    <animate attributeName="opacity" values="1;0.3;1" dur="2s" begin="0.8s" repeatCount="indefinite"/>
+  </circle>
+</svg>
