@@ -572,6 +572,75 @@ const commands: Record<string, CommandHandler> = {
       process.exit(0);
     });
   },
+
+  ultrawebthinking: async () => {
+    console.log(`
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                      ULTRAWEBTHINKING — FILOSOFIA                        ║
+║                     Zero Noise · Maximum Clarity · Absolute Efficiency   ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+🧠 PARIMET THEMELORE:
+
+  1. Minimalizëm i Qëllimshëm
+     → Vetëm ajo që është e nevojshme
+     → E bardha si bazë, teksti i zi
+     → Zero animacione (përveç linewaves)
+
+  2. Qartësi Mbi Kompleksitet
+     → Hierarki e qartë informacioni
+     → Kontekst i bazuar në tabs
+     → Ngjyra vetëm për probleme
+
+  3. Vetëdije për Sistemin
+     → Hartë e gjallë e projektit
+     → Integrity si prioritet
+     → Rrugët "way-to-X"
+
+  4. Offline-First, Zero Cloud
+     → Të dhënat janë lokalë
+     → Asnjë telemetri
+     → Kontrolli i plotë
+
+  5. Etikë në Monetizim
+     → 1 ditë provë falas
+     → Nudge i butë pas 24h
+     → Asnjë bllokadë
+
+🎯 SI TË MENDOSH ULTRA-EFEKTIV:
+
+  • Pyet veten: "A është kjo e nevojshme?"
+  • Prioritizo informacionin: Entry points → Problems → Load
+  • Menaxho kompleksitetin: Layers → Cycles → Paths
+  • Vizualizo me kuptim: Nodes → Edges → Linewaves
+
+🚀 ALGORITMET:
+
+  • Tarjan SCC — Zbulon cycles në O(V + E)
+  • BFS Pathfinding — Gjen rrugën më të shkurtër
+  • Integrity Checks — Orphans, missing links, conflicts
+
+🎨 LINEWAVE RENDERING:
+
+  • Quiet (load të ulët) → Amplitude 2-5px, frequency 0.5-0.8 Hz
+  • Electric (load të lartë) → Amplitude 10-20px, frequency 1.5-2.5 Hz
+  • Gap (missing link) → Vijë e kuqe me pika, 12-20px break
+  • Conflict (version mismatch) → Vijë me shirita 2-3 ngjyrash
+
+📚 DOKUMENTIMI I PLOTË:
+
+  Lexo ULTRAWEBTHINKING.md për detaje të plota:
+  • Shembuj praktikë të rendering
+  • Formula të amplitude/frequency/jaggedness
+  • Struktura e projektit ultra-efektiv
+  • Skenarë të veçantë (quiet, electric, gap, conflict)
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║  "Zero noise, maximum clarity, absolute efficiency."                     ║
+║  Ky është rruga për të ndërtuar mjete që i shërbejnë zhvilluesit.       ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+    `);
+  },
 };
 
 function printHelp() {
@@ -593,6 +662,7 @@ COMMANDS:
   watch          Watch for file changes and show live cwy value
   contribute <€> Record contribution (local)
   diff [days]    Compare snapshot with N days ago (default: 1)
+  ultrawebthinking  Show the ultra-effective philosophy & principles
 
 PHILOSOPHY:
   - Local memory, always
