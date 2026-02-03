@@ -66,13 +66,26 @@ const commands = {
             console.log(config.message);
             return;
         }
+        const { startProgress, startSpinner } = await Promise.resolve().then(() => __importStar(require("../engines/progress/progress")));
         const workspaceRoot = process.cwd();
-        console.log("Scanning workspace...");
-        const { modules, edges } = (0, topology_1.buildTopology)(workspaceRoot);
-        console.log("Detecting cycles...");
+        // Progress indicator for file scanning
+        let progress = null;
+        const onProgress = (current, total, file) => {
+            if (!progress) {
+                progress = startProgress("Scanning files", total);
+            }
+            progress.update(current, file);
+        };
+        const { modules, edges } = (0, topology_1.buildTopology)(workspaceRoot, onProgress);
+        if (progress) {
+            progress.finish(`Scanned ${modules.length} files`);
+        }
+        const spinner = startSpinner("Detecting cycles");
         const cycles = (0, cycles_1.detectCycles)(modules.map((m) => m.id), edges);
-        console.log("Checking integrity...");
+        spinner.stop(`Found ${cycles.length} cycles`);
+        const spinner2 = startSpinner("Checking integrity");
         const { orphans, missingLinks, conflicts } = (0, integrity_1.checkIntegrity)(modules, edges);
+        spinner2.stop(`Integrity check complete`);
         const snapshot = {
             generatedAt: new Date().toISOString(),
             modules,
@@ -81,18 +94,26 @@ const commands = {
             cycles,
         };
         // Calculate score
+        const entryPoints = modules.filter(m => m.layer === "entry").length;
+        const avgDepth = modules.length > 0 ? Math.ceil(edges.length / modules.length) : 0;
+        const project = (0, db_1.getProject)();
+        const firstScanDate = project?.created_at ? new Date(project.created_at) : new Date();
+        const daysSinceFirst = Math.floor((Date.now() - firstScanDate.getTime()) / (1000 * 60 * 60 * 24));
+        const agentModules = modules.filter(m => /agent|ai|llm|prompt/.test(m.path.toLowerCase())).length;
         const metrics = {
             modules: modules.length,
-            routes: 0, // TODO: implement route counting
-            depth: 3, // TODO: calculate graph depth
+            routes: entryPoints,
+            depth: avgDepth,
             cycles: cycles.length,
             conflicts: conflicts.length,
-            historyDays: 1, // TODO: count days since first scan
-            agents: 0,
+            historyDays: daysSinceFirst,
+            agents: agentModules,
         };
         const { score, category } = (0, score_1.evaluateProject)(metrics);
         // Save snapshot with score
+        const spinner3 = startSpinner("Saving snapshot");
         (0, db_1.saveSnapshot)(snapshot, score);
+        spinner3.stop("Snapshot saved");
         // Run integrity checks
         const bypassAttempts = Number((0, db_1.getSystemState)("bypass_attempts") || "0");
         const integrityCheck = (0, detection_1.runIntegrityChecks)(score, bypassAttempts);
@@ -106,13 +127,21 @@ const commands = {
         const integrityViolations = Number((0, db_1.getSystemState)("integrity_violations") || "0");
         const newMode = (0, modes_1.determineMode)(score, totalContributed, integrityViolations);
         (0, db_1.setSystemState)("mode", newMode);
-        console.log("\nScan complete.");
-        console.log(`Files: ${modules.length}`);
-        console.log(`Modules: ${snapshot.modules.filter((m) => m.package).length}`);
-        console.log(`Entry points: ${snapshot.modules.filter((m) => m.layer === "entry").length}`);
+        // Summary with better formatting
+        console.log("\n\u2713 Scan complete");
+        console.log(`  Files: ${modules.length}`);
+        console.log(`  Modules: ${snapshot.modules.filter((m) => m.package).length}`);
+        console.log(`  Entry points: ${snapshot.modules.filter((m) => m.layer === "entry").length}`);
+        console.log(`  Score: ${score.toFixed(1)}%`);
         if (orphans.length > 0 || missingLinks.length > 0 || cycles.length > 0) {
-            console.log("\nScan completed with gaps.");
-            console.log("Use: cwy integrity");
+            console.log("\n\u26A0 Integrity issues detected:");
+            if (orphans.length > 0)
+                console.log(`  - ${orphans.length} orphan modules`);
+            if (cycles.length > 0)
+                console.log(`  - ${cycles.length} cycles`);
+            if (missingLinks.length > 0)
+                console.log(`  - ${missingLinks.length} missing links`);
+            console.log("\nRun: cwy integrity");
         }
     },
     icon: async () => {
@@ -366,6 +395,197 @@ const commands = {
         // Human-readable output
         console.log(formatOverview(overview));
     },
+    search: async (args) => {
+        if (args.length === 0) {
+            console.log("Usage: cwy search <query> [--files] [--nodes]");
+            return;
+        }
+        const snapshot = (0, db_1.getLastSnapshot)();
+        if (!snapshot) {
+            console.log("No system data available.");
+            console.log("Run: cwy scan");
+            return;
+        }
+        const query = args[0];
+        const filesOnly = args.includes("--files");
+        const nodesOnly = args.includes("--nodes");
+        const asJson = args.includes("--json");
+        const { search: searchEngine, formatSearchResult } = await Promise.resolve().then(() => __importStar(require("../engines/search/search")));
+        // Prepare searchable data
+        const files = snapshot.modules.map((m) => ({
+            path: m.path,
+            language: m.metadata?.language || "Unknown",
+            loc: m.metadata?.loc || 0,
+        }));
+        const nodes = snapshot.modules.map((m) => ({
+            id: m.id,
+            label: m.name,
+        }));
+        const results = searchEngine(query, files, nodes, {
+            filesOnly,
+            nodesOnly,
+            limit: 20,
+        });
+        if (asJson) {
+            console.log(JSON.stringify(results, null, 2));
+            return;
+        }
+        if (results.length === 0) {
+            console.log(`No results for "${query}"`);
+            return;
+        }
+        console.log(`\nSearch results for "${query}":\n`);
+        results.forEach((item, i) => {
+            console.log(`${i + 1}. ${formatSearchResult(item)}`);
+        });
+        console.log(`\nFound ${results.length} result(s)`);
+    },
+    trace: async (args) => {
+        if (args.length < 2) {
+            console.log("Usage: cwy trace file <path>");
+            console.log("       cwy trace node <pkg>");
+            return;
+        }
+        const snapshot = (0, db_1.getLastSnapshot)();
+        if (!snapshot) {
+            console.log("No system data available.");
+            console.log("Run: cwy scan");
+            return;
+        }
+        const subcommand = args[0];
+        const target = args[1];
+        const asJson = args.includes("--json");
+        if (subcommand === "file") {
+            const { traceFile, formatFileTrace } = await Promise.resolve().then(() => __importStar(require("../engines/trace/file")));
+            const trace = traceFile(snapshot, target);
+            if (!trace) {
+                console.log(`File not found: ${target}`);
+                return;
+            }
+            if (asJson) {
+                console.log(JSON.stringify(trace, null, 2));
+                return;
+            }
+            console.log(formatFileTrace(trace));
+        }
+        else if (subcommand === "node") {
+            console.log("Node tracing coming soon...");
+        }
+        else {
+            console.log("Unknown trace subcommand. Use 'file' or 'node'.");
+        }
+    },
+    fix: async (args) => {
+        const snapshot = (0, db_1.getLastSnapshot)();
+        if (!snapshot) {
+            console.log("No system data available.");
+            console.log("Run: cwy scan");
+            return;
+        }
+        const shouldApply = args.includes("--apply");
+        const asJson = args.includes("--json");
+        const { detectFixes, formatFixReport } = await Promise.resolve().then(() => __importStar(require("../engines/fix/detect")));
+        const report = detectFixes(snapshot, process.cwd());
+        if (shouldApply) {
+            const { applyFixes, formatApplyResult } = await Promise.resolve().then(() => __importStar(require("../engines/fix/apply")));
+            const result = applyFixes(report, process.cwd(), false);
+            if (asJson) {
+                console.log(JSON.stringify(result, null, 2));
+                return;
+            }
+            console.log(formatApplyResult(result));
+        }
+        else {
+            if (asJson) {
+                console.log(JSON.stringify(report, null, 2));
+                return;
+            }
+            console.log(formatFixReport(report));
+        }
+    },
+    watch: async () => {
+        const snapshot = (0, db_1.getLastSnapshot)();
+        if (!snapshot) {
+            console.log("No system data available.");
+            console.log("Run: cwy scan");
+            return;
+        }
+        const { startWatch } = await Promise.resolve().then(() => __importStar(require("../engines/watch/watch")));
+        const watcher = startWatch(process.cwd());
+        // Handle Ctrl+C gracefully
+        process.on("SIGINT", () => {
+            watcher.stop();
+            process.exit(0);
+        });
+    },
+    ultrawebthinking: async () => {
+        console.log(`
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                      ULTRAWEBTHINKING — FILOSOFIA                        ║
+║                     Zero Noise · Maximum Clarity · Absolute Efficiency   ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+🧠 PARIMET THEMELORE:
+
+  1. Minimalizëm i Qëllimshëm
+     → Vetëm ajo që është e nevojshme
+     → E bardha si bazë, teksti i zi
+     → Zero animacione (përveç linewaves)
+
+  2. Qartësi Mbi Kompleksitet
+     → Hierarki e qartë informacioni
+     → Kontekst i bazuar në tabs
+     → Ngjyra vetëm për probleme
+
+  3. Vetëdije për Sistemin
+     → Hartë e gjallë e projektit
+     → Integrity si prioritet
+     → Rrugët "way-to-X"
+
+  4. Offline-First, Zero Cloud
+     → Të dhënat janë lokalë
+     → Asnjë telemetri
+     → Kontrolli i plotë
+
+  5. Etikë në Monetizim
+     → 1 ditë provë falas
+     → Nudge i butë pas 24h
+     → Asnjë bllokadë
+
+🎯 SI TË MENDOSH ULTRA-EFEKTIV:
+
+  • Pyet veten: "A është kjo e nevojshme?"
+  • Prioritizo informacionin: Entry points → Problems → Load
+  • Menaxho kompleksitetin: Layers → Cycles → Paths
+  • Vizualizo me kuptim: Nodes → Edges → Linewaves
+
+🚀 ALGORITMET:
+
+  • Tarjan SCC — Zbulon cycles në O(V + E)
+  • BFS Pathfinding — Gjen rrugën më të shkurtër
+  • Integrity Checks — Orphans, missing links, conflicts
+
+🎨 LINEWAVE RENDERING:
+
+  • Quiet (load të ulët) → Amplitude 2-5px, frequency 0.5-0.8 Hz
+  • Electric (load të lartë) → Amplitude 10-20px, frequency 1.5-2.5 Hz
+  • Gap (missing link) → Vijë e kuqe me pika, 12-20px break
+  • Conflict (version mismatch) → Vijë me shirita 2-3 ngjyrash
+
+📚 DOKUMENTIMI I PLOTË:
+
+  Lexo ULTRAWEBTHINKING.md për detaje të plota:
+  • Shembuj praktikë të rendering
+  • Formula të amplitude/frequency/jaggedness
+  • Struktura e projektit ultra-efektiv
+  • Skenarë të veçantë (quiet, electric, gap, conflict)
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║  "Zero noise, maximum clarity, absolute efficiency."                     ║
+║  Ky është rruga për të ndërtuar mjete që i shërbejnë zhvilluesit.       ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+    `);
+    },
 };
 function printHelp() {
     console.log(`
@@ -380,8 +600,13 @@ COMMANDS:
   signals        Show active signals
   status         Show project status and mode
   overview       Complete system snapshot (chart + Postman view contract)
+  search <query> Find files and nodes (--files, --nodes, --json)
+  trace file|node <target>  Show routes, impact, usage (--json)
+  fix            Detect missing routes, unused files, docs (--apply, --json)
+  watch          Watch for file changes and show live cwy value
   contribute <€> Record contribution (local)
   diff [days]    Compare snapshot with N days ago (default: 1)
+  ultrawebthinking  Show the ultra-effective philosophy & principles
 
 PHILOSOPHY:
   - Local memory, always
@@ -394,7 +619,7 @@ async function main() {
     // Verify binary signature on startup (production only)
     const signatureCheck = (0, signing_1.verifyBinarySignature)();
     if (!signatureCheck.valid) {
-        console.error("\n⚠️  CWY integrity verification failed.");
+        console.error("\n\u26A0  CWY integrity verification failed.");
         console.error(`Reason: ${signatureCheck.reason}`);
         console.error("\nThis binary may be:");
         console.error("  - Modified without authorization");

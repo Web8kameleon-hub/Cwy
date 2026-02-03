@@ -80,6 +80,9 @@ cwy-core/
 
 ## 🎨 UI Philosophy (Ultra-Effective)
 
+> **📖 For the complete philosophy, see [ULTRAWEBTHINKING.md](./ULTRAWEBTHINKING.md)**  
+> Or run: `cwy ultrawebthinking` from CLI
+
 - **White background**, **black text** → zero noise.
 - **Tabs** (like IDE) for each file/module → context-based focus.
 - **Graph canvas**: nodes = simple rectangles, edges = thin lines.

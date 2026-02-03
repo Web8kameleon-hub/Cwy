@@ -4,37 +4,51 @@ exports.buildTopology = buildTopology;
 // Topology engine: scan workspace, extract imports, build FileModule + DependencyEdge graph.
 const fs_1 = require("fs");
 const path_1 = require("path");
-// Minimal stub: reads .ts/.js files, extracts import statements, builds graph.
-function buildTopology(workspaceRoot) {
+const enhanced_1 = require("../scanner/enhanced");
+// Enhanced: reads files, extracts imports, uses real LOC/language data
+function buildTopology(workspaceRoot, onProgress) {
     const modules = [];
     const edges = [];
-    const files = walkFiles(workspaceRoot, [".ts", ".js", ".tsx", ".jsx"]);
-    for (const absPath of files) {
-        const relPath = (0, path_1.relative)(workspaceRoot, absPath).split(path_1.sep).join("/");
-        const { name } = (0, path_1.parse)(absPath);
+    // Use enhanced scanner for accurate file info
+    const fileInfos = (0, enhanced_1.scanDirectory)(workspaceRoot, ["node_modules", ".git", "dist", "build"], onProgress);
+    // Filter to code files only
+    const codeFiles = fileInfos.filter(f => f.language !== "Unknown" && f.language !== "JSON" && f.language !== "Markdown");
+    for (const fileInfo of codeFiles) {
+        const { path: relPath, language, loc } = fileInfo;
+        const { name } = (0, path_1.parse)(relPath);
         const id = relPath;
         const layer = inferLayer(relPath);
         const mod = {
             id,
             path: relPath,
             name,
-            package: "unknown", // could parse package.json context
+            package: inferPackage(relPath),
             version: "0.0.0",
             layer,
+            // Store metadata for later use
+            metadata: {
+                language,
+                loc,
+                size: fileInfo.size,
+            },
         };
         modules.push(mod);
-        // Extract imports
-        const content = (0, fs_1.readFileSync)(absPath, "utf8");
-        const imports = extractImports(content, absPath, workspaceRoot);
-        for (const imp of imports) {
-            edges.push({
-                id: `${id}->${imp}`,
-                from: id,
-                to: imp,
-                kind: "import",
-                required: true,
-                status: "ok", // will be validated by integrity engine
-            });
+        // Use imports from enhanced scanner
+        for (const imp of fileInfo.imports) {
+            if (imp.startsWith(".") || imp.startsWith("..")) {
+                const absPath = (0, path_1.join)(workspaceRoot, (0, path_1.dirname)(relPath), imp);
+                const resolved = resolveImportPath((0, path_1.dirname)((0, path_1.join)(workspaceRoot, relPath)), imp, workspaceRoot);
+                if (resolved) {
+                    edges.push({
+                        id: `${id}->${resolved}`,
+                        from: id,
+                        to: resolved,
+                        kind: "import",
+                        required: true,
+                        status: "ok",
+                    });
+                }
+            }
         }
     }
     return { modules, edges };
@@ -63,18 +77,36 @@ function walkFiles(dir, exts) {
 }
 function inferLayer(relPath) {
     const lower = relPath.toLowerCase();
-    if (lower.includes("gateway") || lower.includes("entry") || lower.includes("main")) {
+    // Entry points: CLI, main files, gateways, servers
+    if (lower.includes("cli/") ||
+        lower.includes("gateway") ||
+        lower.includes("entry") ||
+        lower.includes("main") ||
+        lower.endsWith("main.ts") ||
+        lower.endsWith("index.ts") ||
+        lower.endsWith("server.ts") ||
+        lower.endsWith("app.ts")) {
         return "entry";
     }
+    // Infrastructure layer
     if (lower.includes("infra") || lower.includes("db") || lower.includes("cache")) {
         return "infra";
     }
+    // Business logic layer
     if (lower.includes("business") ||
         lower.includes("service") ||
         lower.includes("logic")) {
         return "business";
     }
     return "unknown";
+}
+function inferPackage(relPath) {
+    // Extract package/module name from path
+    const parts = relPath.split("/");
+    if (parts.length > 1) {
+        return parts[0]; // Top-level directory
+    }
+    return "root";
 }
 function extractImports(source, fromFilePath, workspaceRoot) {
     const imports = [];
