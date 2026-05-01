@@ -380,6 +380,7 @@
           <h3>Runtime Snapshot</h3>
           <div class="row"><span class="label">Core host</span><span class="value">cwy.clisonix.com</span></div>
           <div class="row"><span class="label">API base</span><span class="value">/api/cwy</span></div>
+          <div class="row"><span class="label">Auth user</span><span class="value">/api/auth/user</span></div>
           <div class="row"><span class="label">License check</span><span class="value">/api/validate-license</span></div>
           <div class="row"><span class="label">Telemetry stream</span><span class="value">WS /ws</span></div>
           <div class="row"><span class="label">CLI gate</span><span class="value">FREE / PRO / ENTERPRISE</span></div>
@@ -441,6 +442,11 @@
           <h3><span class="method get">GET</span>/</h3>
           <p>Health check for gateway/service state.</p>
           <code>curl https://cwy.clisonix.com/</code>
+        </article>
+        <article class="card">
+          <h3><span class="method get">GET</span>/api/auth/user</h3>
+          <p>Resolve current user context, active tier, and credit balance.</p>
+          <code>curl https://cwy.clisonix.com/api/auth/user</code>
         </article>
         <article class="card">
           <h3><span class="method get">GET</span>/api/cwy/api/stats</h3>
