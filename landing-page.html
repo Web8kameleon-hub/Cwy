@@ -387,6 +387,47 @@
       <div class="linewave-wrap"><canvas id="linewave" width="1144" height="126"></canvas></div>
     </section>
 
+    <!-- ── CLISONIX LIVE STATUS ─────────────────────────────────── -->
+    <section class="section" id="clisonix-live">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Clisonix AGI Platform · Live</div>
+          <h2>Real-time signals from the intelligence layer</h2>
+        </div>
+        <div id="cls-refresh" style="font-size:13px;color:var(--muted);cursor:pointer;" onclick="fetchClisonix()" title="Refresh">↻ refresh</div>
+      </div>
+
+      <!-- Nin emotional state bar -->
+      <div id="nin-bar" style="display:none; margin-bottom:14px; padding:10px 14px; border:1px solid rgba(97,242,255,0.2); border-radius:12px; background:rgba(9,17,29,0.7);">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span id="nin-emoji" style="font-size:26px;">💓</span>
+          <div>
+            <div style="font-family:'Orbitron',sans-serif;font-size:13px;color:var(--accent);">NIN ENGINE</div>
+            <div id="nin-emotion" style="font-size:18px;font-weight:700;">—</div>
+          </div>
+          <div style="margin-left:auto; text-align:right;">
+            <div style="font-size:13px;color:var(--muted);" id="nin-reason">—</div>
+            <div style="margin-top:4px; display:flex; gap:8px; justify-content:flex-end; font-size:13px;">
+              <span>Health: <b id="nin-health">—</b></span>
+              <span>Code: <b id="nin-code">—</b></span>
+              <span>Activity: <b id="nin-act">—</b></span>
+            </div>
+          </div>
+        </div>
+        <!-- health progress bar -->
+        <div style="margin-top:8px; height:4px; border-radius:4px; background:rgba(255,255,255,0.08);">
+          <div id="nin-bar-fill" style="height:4px; border-radius:4px; background:linear-gradient(90deg,var(--accent),var(--ok)); width:0%; transition:width .6s ease;"></div>
+        </div>
+      </div>
+
+      <!-- Component grid -->
+      <div id="cls-grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px;">
+        <div class="card" style="text-align:center;color:var(--muted);font-size:14px;padding:22px;">Loading Clisonix…</div>
+      </div>
+      <div id="cls-footer" style="margin-top:8px;font-size:13px;color:var(--muted);text-align:right;"></div>
+    </section>
+    <!-- ── END CLISONIX LIVE ──────────────────────────────────── -->
+
     <section class="section" id="api">
       <div class="section-head">
         <div>
@@ -516,9 +557,94 @@ ENTERPRISE: + export</code>
   </main>
 
   <script>
+    // ── Clisonix Live Signals ─────────────────────────────────────────
+    // The public landing page cannot reach localhost, so we use the
+    // CWY signals proxy endpoint exposed on cwy.clisonix.com itself.
+    // When the server-side bridge is online it returns JSON; when not
+    // yet configured we fall back to a realistic demo payload so the
+    // UI always looks alive.
+
+    var CLS_API = '/api/cwy/clisonix-signals';
+
+    var EMOTION_EMOJI = {
+      excited: '🎉', happy: '😊', content: '😌', concerned: '⚠️',
+      worried: '😟', anxious: '😰', celebrating: '🎊', curious: '🤔',
+      focused: '🎯', unknown: '💓'
+    };
+
+    var DEMO_DATA = {
+      components: [
+        { name: 'Ocean Core',   port: 7000, online: false, latencyMs: null },
+        { name: 'ASI Agents',   port: 7100, online: false, latencyMs: null },
+        { name: 'AI V2',        port: 7200, online: false, latencyMs: null },
+        { name: 'EuroWeb AGI',  port: 7300, online: false, latencyMs: null },
+        { name: 'Labors',       port: 7400, online: false, latencyMs: null },
+        { name: 'Nin Engine',   port: 7500, online: false, latencyMs: null },
+        { name: 'Orchestrator', port: 8000, online: false, latencyMs: null }
+      ],
+      nin: null,
+      aggregateHealth: 0,
+      errorRate: 1,
+      fetchedAt: new Date().toISOString(),
+      _demo: true
+    };
+
+    function renderComponents(data) {
+      var grid = document.getElementById('cls-grid');
+      if (!data.components || !data.components.length) return;
+      grid.innerHTML = data.components.map(function(c) {
+        var ok    = c.online;
+        var color = ok ? 'var(--ok)' : 'var(--warn)';
+        var dot   = ok ? '●' : '○';
+        var lat   = c.latencyMs != null ? c.latencyMs + 'ms' : '—';
+        var extra = c.name === 'Nin Engine' ? ' style="border-color:rgba(97,242,255,0.4)"' : '';
+        return '<article class="card"' + extra + '>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+            '<span style="font-size:11px;font-family:Orbitron,sans-serif;color:var(--muted);">:' + c.port + '</span>' +
+            '<span style="color:' + color + ';font-size:16px;" title="' + (ok ? 'online' : 'offline') + '">' + dot + '</span>' +
+          '</div>' +
+          '<div style="font-weight:700;font-size:15px;margin-bottom:2px;">' + c.name + '</div>' +
+          '<div style="font-size:12px;color:var(--muted);">' + (ok ? 'latency ' + lat : 'offline') + '</div>' +
+        '</article>';
+      }).join('');
+    }
+
+    function renderNin(nin) {
+      if (!nin) return;
+      var bar = document.getElementById('nin-bar');
+      bar.style.display = 'block';
+      var emoji = EMOTION_EMOJI[nin.emotion] || '💓';
+      document.getElementById('nin-emoji').textContent    = emoji;
+      document.getElementById('nin-emotion').textContent  = nin.emotion.toUpperCase() + '  (' + Math.round(nin.intensity * 100) + '%)';
+      document.getElementById('nin-reason').textContent   = nin.reason || '—';
+      document.getElementById('nin-health').textContent   = Math.round(nin.systemHealth  * 100) + '%';
+      document.getElementById('nin-code').textContent     = Math.round(nin.codeQuality   * 100) + '%';
+      document.getElementById('nin-act').textContent      = Math.round(nin.activityLevel * 100) + '%';
+      document.getElementById('nin-bar-fill').style.width = Math.round(nin.systemHealth * 100) + '%';
+    }
+
+    function fetchClisonix() {
+      fetch(CLS_API)
+        .then(function(res) { if (!res.ok) throw new Error(); return res.json(); })
+        .catch(function() { return Object.assign({}, DEMO_DATA, { fetchedAt: new Date().toISOString() }); })
+        .then(function(data) {
+          renderComponents(data);
+          if (data.nin) renderNin(data.nin);
+          var footer = document.getElementById('cls-footer');
+          var health = Math.round((data.aggregateHealth || 0) * 100);
+          var note   = data._demo ? ' · (server bridge pending)' : '';
+          footer.textContent = 'Health ' + health + '% · fetched ' + new Date(data.fetchedAt).toLocaleTimeString() + note;
+        });
+    }
+
+    fetchClisonix();
+    setInterval(fetchClisonix, 15000);
+  </script>
+
+  <script>
     (function () {
-      const canvas = document.getElementById('linewave');
-      const ctx = canvas.getContext('2d');
+      var canvas = document.getElementById('linewave');
+      var ctx = canvas.getContext('2d');
 
       function resize() {
         const rect = canvas.getBoundingClientRect();

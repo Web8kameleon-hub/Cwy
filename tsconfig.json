@@ -6,6 +6,7 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "baseUrl": ".",
+    "ignoreDeprecations": "5.0",
     "outDir": "dist",
     "strict": true,
     "skipLibCheck": true,

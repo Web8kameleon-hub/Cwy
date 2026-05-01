@@ -264,6 +264,13 @@ const commands: Record<string, CommandHandler> = {
   },
 
   signals: async () => {
+    // --source=clisonix → pull live signals from the Clisonix AGI platform
+    if (process.argv.includes("--source=clisonix")) {
+      const { printClisonixSignals } = await import("../engines/signals/clisonix-bridge");
+      await printClisonixSignals();
+      return;
+    }
+
     // Check license
     const { isFeatureAllowed } = await import("../engines/licensing/license");
     if (!isFeatureAllowed("signals")) {
