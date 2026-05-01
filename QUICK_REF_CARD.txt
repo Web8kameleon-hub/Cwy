@@ -42,7 +42,7 @@ Dashboard: https://dashboard.stripe.com/apikeys
 ✅ Already configured (from Clisonix):
    STRIPE_PUBLISHABLE_KEY=pk_live_51SMsVs...
    STRIPE_PRICE_ID_PRO=price_1Sy88I... (€29)
-   STRIPE_PRICE_ID_ENTERPRISE=price_1Synws... (€99)
+  STRIPE_PRICE_ID_ENTERPRISE=price_1TSJrs... (€99)
 
 ⚠️  YOU NEED TO GET:
    STRIPE_SECRET_KEY=sk_live_... (from dashboard)
