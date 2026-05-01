@@ -375,6 +375,59 @@
       font-size: 15px;
     }
 
+    .plan-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .plan-tab {
+      border: 1px solid rgba(97, 242, 255, 0.25);
+      border-radius: 10px;
+      background: rgba(8, 16, 26, 0.75);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: border-color 0.18s ease, background 0.18s ease;
+    }
+
+    .plan-tab.is-active {
+      border-color: rgba(97, 242, 255, 0.75);
+      background: rgba(20, 42, 58, 0.9);
+      color: #dff8ff;
+    }
+
+    .plan-panels {
+      border: 1px solid rgba(97, 242, 255, 0.22);
+      border-radius: 14px;
+      background: rgba(8, 15, 25, 0.74);
+      padding: 14px;
+    }
+
+    .plan-panel {
+      display: none;
+    }
+
+    .plan-panel.is-active {
+      display: block;
+    }
+
+    .plan-cta {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 700;
+      color: #04121d;
+      background: linear-gradient(95deg, var(--accent), #8de8ff);
+    }
+
     .footer {
       margin-top: 18px;
       color: var(--muted);
@@ -624,8 +677,14 @@ ENTERPRISE: + export</code>
           </p>
         </div>
       </div>
-      <div class="price-grid">
-        <article class="card">
+      <div class="plan-tabs" role="tablist" aria-label="Pricing plans">
+        <button class="plan-tab is-active" data-plan-tab="free" type="button">FREE</button>
+        <button class="plan-tab" data-plan-tab="pro" type="button">PRO</button>
+        <button class="plan-tab" data-plan-tab="enterprise" type="button">ENTERPRISE</button>
+      </div>
+
+      <div class="plan-panels">
+        <article class="plan-panel is-active" data-plan-panel="free">
           <h3>FREE</h3>
           <div class="price">EUR 0</div>
           <div class="sub">Forever</div>
@@ -634,8 +693,10 @@ ENTERPRISE: + export</code>
             <li>Perfect for solo testing</li>
             <li>No card required</li>
           </ul>
+          <a class="plan-cta" href="register.html?plan=free">Start Free</a>
         </article>
-        <article class="card" style="border-color: rgba(97, 242, 255, 0.45);">
+
+        <article class="plan-panel" data-plan-panel="pro">
           <h3>PRO</h3>
           <div class="price">EUR 29</div>
           <div class="sub">One-time activation</div>
@@ -644,8 +705,10 @@ ENTERPRISE: + export</code>
             <li>Route + integrity + signals + diff</li>
             <li>Ideal for active builders</li>
           </ul>
+          <a class="plan-cta" href="register.html?plan=pro">Continue to PRO Checkout</a>
         </article>
-        <article class="card" style="border-color: rgba(255, 209, 102, 0.45);">
+
+        <article class="plan-panel" data-plan-panel="enterprise">
           <h3>ENTERPRISE</h3>
           <div class="price">EUR 99</div>
           <div class="sub">One-time activation</div>
@@ -654,6 +717,7 @@ ENTERPRISE: + export</code>
             <li>Export workflows</li>
             <li>Best for teams and ops</li>
           </ul>
+          <a class="plan-cta" href="register.html?plan=enterprise">Continue to Enterprise Checkout</a>
         </article>
       </div>
       <div class="pay-box">
@@ -762,9 +826,7 @@ ENTERPRISE: + export</code>
     // ── Clisonix Live Signals ─────────────────────────────────────────
     // The public landing page cannot reach localhost, so we use the
     // CWY signals proxy endpoint exposed on cwy.clisonix.com itself.
-    // When the server-side bridge is online it returns JSON; when not
-    // yet configured we fall back to a realistic demo payload so the
-    // UI always looks alive.
+    // If bridge is unavailable we show offline state instead of synthetic data.
 
     var CLS_API = '/api/cwy/clisonix-signals';
 
@@ -774,7 +836,7 @@ ENTERPRISE: + export</code>
       focused: '🎯', unknown: '💓'
     };
 
-    var DEMO_DATA = {
+    var OFFLINE_DATA = {
       components: [
         { name: 'Ocean Core',   port: 7000, online: false, latencyMs: null },
         { name: 'ASI Agents',   port: 7100, online: false, latencyMs: null },
@@ -788,7 +850,7 @@ ENTERPRISE: + export</code>
       aggregateHealth: 0,
       errorRate: 1,
       fetchedAt: new Date().toISOString(),
-      _demo: true
+      _bridgeOffline: true
     };
 
     function renderComponents(data) {
@@ -837,7 +899,7 @@ ENTERPRISE: + export</code>
     function fetchClisonix() {
       fetch(CLS_API)
         .then(function(res) { if (!res.ok) throw new Error(); return res.json(); })
-        .catch(function() { return Object.assign({}, DEMO_DATA, { fetchedAt: new Date().toISOString() }); })
+        .catch(function() { return Object.assign({}, OFFLINE_DATA, { fetchedAt: new Date().toISOString() }); })
         .then(function(data) {
           if (data && data.ninData && !data.nin) {
             data.nin = {
@@ -853,13 +915,33 @@ ENTERPRISE: + export</code>
           if (data.nin) renderNin(data.nin);
           var footer = document.getElementById('cls-footer');
           var health = Math.round((data.aggregateHealth || 0) * 100);
-          var note   = data._demo ? ' · (server bridge pending)' : '';
+          var note   = data._bridgeOffline ? ' · (live bridge unavailable)' : '';
           footer.textContent = 'Health ' + health + '% · fetched ' + new Date(data.fetchedAt).toLocaleTimeString() + note;
         });
     }
 
     fetchClisonix();
     setInterval(fetchClisonix, 15000);
+
+    (function () {
+      var tabs = Array.prototype.slice.call(document.querySelectorAll('[data-plan-tab]'));
+      var panels = Array.prototype.slice.call(document.querySelectorAll('[data-plan-panel]'));
+
+      function setActive(plan) {
+        tabs.forEach(function (tab) {
+          tab.classList.toggle('is-active', tab.getAttribute('data-plan-tab') === plan);
+        });
+        panels.forEach(function (panel) {
+          panel.classList.toggle('is-active', panel.getAttribute('data-plan-panel') === plan);
+        });
+      }
+
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          setActive(tab.getAttribute('data-plan-tab'));
+        });
+      });
+    })();
   </script>
 
   <script>
