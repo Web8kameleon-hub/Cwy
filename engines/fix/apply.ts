@@ -26,25 +26,6 @@ export function applyFixes(report: FixReport, workspaceRoot: string, dryRun: boo
           fs.writeFileSync(filePath, fix.skeleton, "utf-8");
         }
         applied.push(`Created ${fix.target}`);
-      } else if (fix.action === "create_stub" && fix.skeleton) {
-        // Create stub files in a stubs/ directory to avoid conflicts
-        const stubDir = path.join(workspaceRoot, "cwy-stubs");
-        if (!fs.existsSync(stubDir) && !dryRun) {
-          fs.mkdirSync(stubDir, { recursive: true });
-        }
-
-        const stubFileName = `${fix.target.replace(/[\/\\]/g, "_")}_stub.ts`;
-        const stubPath = path.join(stubDir, stubFileName);
-
-        if (fs.existsSync(stubPath)) {
-          errors.push(`Stub for ${fix.target} already exists - skipping`);
-          continue;
-        }
-
-        if (!dryRun) {
-          fs.writeFileSync(stubPath, fix.skeleton, "utf-8");
-        }
-        applied.push(`Created stub: ${stubFileName}`);
       } else if (fix.action === "review") {
         // Review actions are manual - just report them
         applied.push(`Review needed: ${fix.target}`);
@@ -83,8 +64,8 @@ export function formatApplyResult(result: ApplyResult): string {
   if (result.success) {
     lines.push("All fixes applied successfully!");
     lines.push("\nNext steps:");
-    lines.push("  1. Review generated files in cwy-stubs/");
-    lines.push("  2. Integrate stubs into your codebase");
+    lines.push("  1. Implement real services/routes for all 'Review needed' items");
+    lines.push("  2. Remove or replace any existing stub modules");
     lines.push("  3. Run: cwy scan");
   } else {
     lines.push("Some fixes failed - see errors above.");
