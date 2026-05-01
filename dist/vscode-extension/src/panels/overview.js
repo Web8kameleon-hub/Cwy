@@ -36,12 +36,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OverviewPanel = void 0;
 const vscode = __importStar(require("vscode"));
 class OverviewPanel {
-    constructor(panel, extensionUri) {
+    constructor(panel, extensionUri, data) {
         this.panel = panel;
         this.extensionUri = extensionUri;
+        this.data = data;
     }
-    static render(extensionUri) {
+    static render(extensionUri, data = null) {
         if (OverviewPanel.currentPanel) {
+            OverviewPanel.currentPanel.data = data;
+            OverviewPanel.currentPanel.update(data);
             OverviewPanel.currentPanel.panel.reveal(vscode.ViewColumn.One);
             return;
         }
@@ -49,13 +52,16 @@ class OverviewPanel {
             enableScripts: true,
             retainContextWhenHidden: true,
         });
-        OverviewPanel.currentPanel = new OverviewPanel(panel, extensionUri);
-        OverviewPanel.currentPanel.update();
+        OverviewPanel.currentPanel = new OverviewPanel(panel, extensionUri, data);
+        OverviewPanel.currentPanel.update(data);
         panel.onDidDispose(() => {
             OverviewPanel.currentPanel = undefined;
         });
     }
-    update() {
+    update(data = null) {
+        if (data) {
+            this.data = data;
+        }
         this.panel.webview.html = this.getHtml();
     }
     getHtml() {
@@ -199,20 +205,41 @@ class OverviewPanel {
   <main>
     <section class="card">
       <div class="label">CWY Score</div>
-      <div class="value">82<small>/100</small></div>
+      <div class="value">${this.data?.value?.cwy?.toFixed(1) || 0}<small>/100</small></div>
+    </section>
+    <section class="card">
+      <div class="label">Modules</div>
+      <div class="value">${this.data?.system?.modules || 0}<small>files</small></div>
+    </section>
+    <section class="card">
+      <div class="label">Structure</div>
+      <div class="value">${this.data?.value?.structure?.toFixed(0) || 0}<small>/100</small></div>
+    </section>
+    <section class="card">
+      <div class="label">Connectivity</div>
+      <div class="value">${this.data?.value?.connectivity?.toFixed(0) || 0}<small>/100</small></div>
+    </section>
+    <section class="card">
+      <div class="label">Orphans</div>
+      <div class="value">${this.data?.integrity?.orphans || 0}</div>
+    </section>
+    <section class="card">
+      <div class="label">Cycles</div>
+      <div class="value">${this.data?.integrity?.cycles || 0}</div>
     </section>
     <section class="card">
       <div class="label">Signals</div>
       <div class="signals">
-        <span class="signal-dot" aria-hidden="true"></span>
-        <span class="signal-dot" aria-hidden="true" style="animation-delay: 0.4s"></span>
-        <span class="signal-dot" aria-hidden="true" style="animation-delay: 0.8s"></span>
+        ${this.data?.signals?.length > 0 ? this.data.signals.map((_, i) => `<span class="signal-dot" aria-hidden="true" style="animation-delay: ${i * 0.4}s"></span>`).join('') : '<span class="signal-dot" aria-hidden="true"></span>'}
       </div>
-      <div class="subtitle">Live signals flowing</div>
+      <div class="subtitle">${this.data?.signals?.length || 0} active</div>
     </section>
     <section class="card">
       <div class="label">Status</div>
-      <div class="value">OK<small>last scan: pending</small></div>
+      <div class="value">
+        ${this.data ? 'OK' : '<span style="color: #dc2626">No Data</span>'}
+        <small>${this.data ? 'live' : 'run scan first'}</small>
+      </div>
     </section>
   </main>
 </body>

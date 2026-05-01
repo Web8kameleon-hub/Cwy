@@ -27,11 +27,11 @@ function generateOverview(snapshot) {
         0.1 * docs +
         0.1 * langComplexity +
         0.1 * stability;
-    // Language stats (placeholder - would come from enhanced scan)
+    // Language stats
     const languages = detectLanguages(snapshot);
-    // Docs detection (placeholder - would come from enhanced scan)
+    // Docs detection
     const docsInfo = detectDocs(snapshot);
-    // Intelligence detection (placeholder - would come from enhanced scan)
+    // Intelligence detection
     const intelInfo = detectIntelligence(snapshot);
     // Generate signals
     const signals = generateSignals(snapshot, {
@@ -39,6 +39,14 @@ function generateOverview(snapshot) {
         cycles: snapshot.cycles.length,
         conflicts: conflicts.length,
     });
+    // Collect file information (enhanced)
+    const fileRefs = snapshot.modules.map((m) => ({
+        path: m.path,
+        node: m.name,
+        language: m.metadata?.language || "Unknown",
+        loc: m.metadata?.loc || 0,
+        size: m.metadata?.size || 0,
+    }));
     return {
         value: {
             cwy: Math.round(cwyValue * 100) / 100,
@@ -56,7 +64,11 @@ function generateOverview(snapshot) {
             core: 1,
             nodes: snapshot.modules.length,
             modules: snapshot.modules.length,
-            files: snapshot.modules.length, // Placeholder - would come from enhanced scan
+            files: snapshot.modules.length,
+        },
+        files: {
+            total: fileRefs.length,
+            flat: fileRefs,
         },
         languages,
         docs: docsInfo,
@@ -98,46 +110,60 @@ function calculateLoad(snapshot) {
     return Math.max(20, 50 - (avgEdges - 5) * 5);
 }
 function calculateIntelligence(snapshot) {
-    // Placeholder - would detect agents/prompts/policies from scan
-    return 40; // Neutral default
+    let intelScore = 0;
+    // Check for AI/agent files
+    const hasAgents = snapshot.modules.some(m => /agent|ai|llm|prompt/.test(m.path.toLowerCase()));
+    if (hasAgents)
+        intelScore += 50;
+    // Check for policy files
+    const hasPolicies = snapshot.modules.some(m => /policy|rule|constraint/.test(m.path.toLowerCase()));
+    if (hasPolicies)
+        intelScore += 30;
+    // Check for prompt engineering
+    const hasPrompts = snapshot.modules.some(m => /prompt|template/.test(m.path.toLowerCase()));
+    if (hasPrompts)
+        intelScore += 20;
+    return Math.min(100, intelScore);
 }
 function calculateDocs(snapshot) {
-    // Placeholder - would detect README/OpenAPI/docs/ from scan
-    return 40; // Neutral default
+    let docsScore = 0;
+    // Check for README
+    const hasReadme = snapshot.modules.some(m => /readme\.md$/i.test(m.path));
+    if (hasReadme)
+        docsScore += 30;
+    // Check for docs directory
+    const hasDocs = snapshot.modules.some(m => /\/docs\//.test(m.path) || /\/documentation\//.test(m.path));
+    if (hasDocs)
+        docsScore += 30;
+    // Check for API specs
+    const hasApiSpec = snapshot.modules.some(m => /openapi|swagger|api-spec/.test(m.path.toLowerCase()));
+    if (hasApiSpec)
+        docsScore += 40;
+    return docsScore;
 }
 function calculateLanguageComplexity(snapshot) {
-    // Placeholder - would count distinct languages from scan
-    const languages = 1; // Assume TypeScript only for now
+    const langMap = new Map();
+    snapshot.modules.forEach((m) => {
+        const lang = m.metadata?.language || "Unknown";
+        langMap.set(lang, (langMap.get(lang) || 0) + 1);
+    });
+    const languages = langMap.size;
     return Math.max(60, 100 - (languages - 1) * 10);
 }
 function calculateStability(snapshot) {
-    // Placeholder - would compare with previous snapshot
-    return 70; // Neutral default
+    // Would need previous snapshot to compare - for now return based on cycles/conflicts
+    const issueCount = snapshot.cycles.length + snapshot.conflicts.length;
+    return Math.max(30, 100 - issueCount * 10);
 }
 function detectLanguages(snapshot) {
-    // Placeholder - would come from enhanced file scanner
     const languages = {};
     snapshot.modules.forEach((m) => {
-        const ext = m.path.split(".").pop()?.toLowerCase();
-        let lang = "Unknown";
-        if (ext === "ts" || ext === "tsx")
-            lang = "TypeScript";
-        else if (ext === "js" || ext === "jsx")
-            lang = "JavaScript";
-        else if (ext === "py")
-            lang = "Python";
-        else if (ext === "go")
-            lang = "Go";
-        else if (ext === "rs")
-            lang = "Rust";
-        else if (ext === "java")
-            lang = "Java";
+        const lang = m.metadata?.language || "Unknown";
         languages[lang] = (languages[lang] || 0) + 1;
     });
     return languages;
 }
 function detectDocs(snapshot) {
-    // Placeholder - would come from enhanced scan
     const hasReadme = snapshot.modules.some((m) => m.path.toLowerCase().includes("readme"));
     const openApiCount = snapshot.modules.filter((m) => m.path.toLowerCase().includes("openapi")).length;
     const hasDocsDir = snapshot.modules.some((m) => m.path.includes("docs/"));
@@ -148,7 +174,6 @@ function detectDocs(snapshot) {
     };
 }
 function detectIntelligence(snapshot) {
-    // Placeholder - would detect AI artifacts from scan
     const agents = snapshot.modules.filter((m) => m.path.toLowerCase().includes("agent")).length;
     const prompts = snapshot.modules.filter((m) => m.path.toLowerCase().includes("prompt")).length;
     const policies = snapshot.modules.filter((m) => m.path.toLowerCase().includes("polic")).length;

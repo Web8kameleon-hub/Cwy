@@ -12,6 +12,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
     "@types/vscode": "^1.107.0",
+    "eslint": "^10.2.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.2.2"
   }

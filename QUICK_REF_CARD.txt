@@ -1,0 +1,219 @@
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║        🎉 CWY LICENSE SYSTEM - QUICK REFERENCE CARD 🎉          ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+
+📁 PROJECT STRUCTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Cwy/
+├── backend/                    # License server
+│   ├── stripe_webhook.py      # Main server (FastAPI)
+│   ├── .env                   # SECRET KEYS (don't commit!)
+│   ├── requirements.txt       # Python dependencies
+│   ├── test_backend.py        # Test script
+│   └── start.bat             # Quick start (Windows)
+│
+├── engines/licensing/
+│   └── license.ts            # CLI license validation
+│
+└── cli/cwy.ts                # CLI commands
+
+🚀 QUICK START (Local)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Backend:
+cd backend
+start.bat                     # Windows
+# OR: python stripe_webhook.py
+
+# Test:
+curl http://localhost:8000/
+
+# Stripe webhook (terminal 2):
+stripe listen --forward-to localhost:8000/webhook/stripe
+
+# Trigger test (terminal 3):
+stripe trigger checkout.session.completed
+
+🎟️ STRIPE KEYS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Dashboard: https://dashboard.stripe.com/apikeys
+
+✅ Already configured (from Clisonix):
+   STRIPE_PUBLISHABLE_KEY=pk_live_51SMsVs...
+   STRIPE_PRICE_ID_PRO=price_1Sy88I... (€29)
+   STRIPE_PRICE_ID_ENTERPRISE=price_1Synws... (€99)
+
+⚠️  YOU NEED TO GET:
+   STRIPE_SECRET_KEY=sk_live_... (from dashboard)
+
+📡 API ENDPOINTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Local:        http://localhost:8000
+Production:   https://kameleon.life/api/cwy
+
+GET  /                        Health check
+GET  /api/stats              License statistics
+POST /api/validate-license   Validate a key
+POST /webhook/stripe         Stripe webhook
+WS   /ws                     WebSocket (real-time)
+
+🧪 TEST COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Health:
+curl http://localhost:8000/
+
+# Stats:
+curl http://localhost:8000/api/stats
+
+# Validate:
+curl -X POST http://localhost:8000/api/validate-license \
+  -H "Content-Type: application/json" \
+  -d '{"license_key": "CWY-PRO-LIFETIME-ABC123"}'
+
+# WebSocket:
+wscat -c ws://localhost:8000/ws
+
+# Database:
+sqlite3 backend/cwy_licenses.db "SELECT * FROM licenses;"
+
+🎊 ACHIEVEMENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎊 First Customer          → 1 license
+💎 10 Licenses Sold        → 10 licenses
+👑 First Enterprise        → 1 Enterprise license
+💸 €1,000 Revenue          → €1,000
+🌟 50 Licenses             → 50 licenses
+
+🚀 DEPLOY TO PRODUCTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Upload:
+scp -r backend/* root@kameleon.life:/var/www/cwy-backend/
+
+# SSH & Setup:
+ssh root@kameleon.life
+cd /var/www/cwy-backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Create .env (manually)
+nano .env
+# Paste keys, save
+
+# Start:
+pm2 start stripe_webhook.py --name cwy-backend --interpreter python3
+pm2 save
+
+# Logs:
+pm2 logs cwy-backend
+
+🌐 NGINX CONFIG
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+location /api/cwy/ {
+    proxy_pass http://localhost:8000/;
+}
+
+location /ws {
+    proxy_pass http://localhost:8000/ws;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
+
+🔒 SSL (Let's Encrypt)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+certbot --nginx -d kameleon.life
+
+🎯 STRIPE WEBHOOK SETUP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. https://dashboard.stripe.com/webhooks
+2. Add endpoint: https://kameleon.life/webhook/stripe
+3. Event: checkout.session.completed
+4. Copy signing secret → Update .env
+5. Restart: pm2 restart cwy-backend
+
+📊 DATABASE QUERIES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# All licenses:
+SELECT * FROM licenses;
+
+# Count by tier:
+SELECT tier, COUNT(*) FROM licenses GROUP BY tier;
+
+# Revenue:
+SELECT SUM(CASE WHEN tier='PRO' THEN 29 
+                WHEN tier='ENTERPRISE' THEN 99 END) 
+FROM licenses;
+
+🐛 TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Backend not starting?
+→ Check port 8000: netstat -an | grep 8000
+→ Kill process: taskkill /PID <PID> /F
+
+Webhook not receiving?
+→ Check Stripe dashboard → Webhooks → Logs
+→ Verify signing secret in .env
+
+WebSocket not connecting?
+→ Check nginx WebSocket headers
+→ Verify PM2 process running
+
+📞 IMPORTANT CONTACTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Email:   clisonix@pm.me
+Server:  ssh root@kameleon.life
+Stripe:  https://dashboard.stripe.com
+Docs:    See DEPLOYMENT_CHECKLIST.md
+
+📝 CHEAT SHEET
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Start backend (local):
+cd backend && python stripe_webhook.py
+
+# Test backend:
+python backend/test_backend.py
+
+# Deploy:
+./backend/deploy.sh
+
+# Check status:
+pm2 status
+
+# View logs:
+pm2 logs cwy-backend
+
+# Restart:
+pm2 restart cwy-backend
+
+# Database backup:
+cp cwy_licenses.db backups/cwy_$(date +%Y%m%d).db
+
+🎉 CELEBRATION FLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Customer pays → Stripe
+2. Stripe → Webhook → Backend
+3. Backend generates license: CWY-PRO-LIFETIME-ABC123
+4. Backend broadcasts WebSocket event
+5. Dashboard receives event
+6. 🎆 CONFETTI EXPLOSION!
+7. 🏆 Achievement unlocked
+8. 💰 Revenue updates
+
+✅ READY CHECKLIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+□ Backend starts without errors
+□ Stripe test webhook processes
+□ License key generated
+□ WebSocket connects
+□ Dashboard shows license server online
+□ Celebration triggers on test
+□ Production deployed
+□ SSL certificate active
+□ Real payment test successful
+□ GO LIVE! 🚀
+
+╔══════════════════════════════════════════════════════════════════╗
+║  Print this card and keep it handy for quick reference! 📌      ║
+╚══════════════════════════════════════════════════════════════════╝

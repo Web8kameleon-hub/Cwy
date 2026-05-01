@@ -184,6 +184,15 @@ const commands: Record<string, CommandHandler> = {
   },
 
   route: async (args: string[]) => {
+    // Check license
+    const { isFeatureAllowed } = await import("../engines/licensing/license");
+    if (!isFeatureAllowed("route")) {
+      console.log("\n🔒 Route pathfinding is a PRO feature.");
+      console.log("Upgrade to PRO or ENTERPRISE to unlock this feature.");
+      console.log("\nRun: cwy pricing\n");
+      return;
+    }
+
     const snapshot = getLastSnapshot();
     if (!snapshot) {
       console.log("No snapshot. Run `cwy scan` first.");
@@ -205,12 +214,21 @@ const commands: Record<string, CommandHandler> = {
     console.log(pathStr);
     console.log("\nLoad: (to be calculated)");
     console.log(`Conflicts: ${snapshot.conflicts.length > 0 ? snapshot.conflicts.length : "none"}`);
-    
+
     const { missingLinks } = checkIntegrity(snapshot.modules, snapshot.edges);
     console.log(`Missing links: ${missingLinks.length}`);
   },
 
   integrity: async () => {
+    // Check license
+    const { isFeatureAllowed } = await import("../engines/licensing/license");
+    if (!isFeatureAllowed("integrity")) {
+      console.log("\n🔒 Integrity reports are a PRO feature.");
+      console.log("Upgrade to PRO or ENTERPRISE to unlock this feature.");
+      console.log("\nRun: cwy pricing\n");
+      return;
+    }
+
     const snapshot = getLastSnapshot();
     if (!snapshot) {
       console.log("No snapshot. Run `cwy scan` first.");
@@ -220,18 +238,18 @@ const commands: Record<string, CommandHandler> = {
       snapshot.modules,
       snapshot.edges
     );
-    
+
     if (orphans.length === 0 && missingLinks.length === 0 && snapshot.cycles.length === 0 && snapshot.conflicts.length === 0) {
       console.log("\nSystem integrity is clean.");
       return;
     }
-    
+
     console.log("\nINTEGRITY REPORT");
     console.log(`Orphan modules: ${orphans.length}`);
     console.log(`Missing links: ${missingLinks.length}`);
     console.log(`Cycles: ${snapshot.cycles.length}`);
     console.log(`Conflicts: ${snapshot.conflicts.length}`);
-    
+
     if (orphans.length > 0) {
       console.log("\nOrphans:");
       orphans.forEach((id: string) => {
@@ -246,15 +264,24 @@ const commands: Record<string, CommandHandler> = {
   },
 
   signals: async () => {
+    // Check license
+    const { isFeatureAllowed } = await import("../engines/licensing/license");
+    if (!isFeatureAllowed("signals")) {
+      console.log("\n🔒 Signals detection is a PRO feature.");
+      console.log("Upgrade to PRO or ENTERPRISE to unlock this feature.");
+      console.log("\nRun: cwy pricing\n");
+      return;
+    }
+
     const snapshot = getLastSnapshot();
     if (!snapshot) {
       console.log("No snapshot. Run `cwy scan` first.");
       return;
     }
-    
+
     const { orphans, missingLinks } = checkIntegrity(snapshot.modules, snapshot.edges);
     const packageConflicts = snapshot.conflicts.filter((c: any) => c.type === "package_version");
-    
+
     const activeSignals: { type: string; severity: string; count: number; details?: any }[] = [];
     if (missingLinks.length > 0) {
       activeSignals.push({
@@ -278,12 +305,12 @@ const commands: Record<string, CommandHandler> = {
         count: snapshot.cycles.length
       });
     }
-    
+
     if (activeSignals.length === 0) {
       console.log("\nNo active signals.");
       return;
     }
-    
+
     console.log(`\nActive signals: ${activeSignals.length}`);
     activeSignals.forEach(sig => {
       console.log(`  • ${sig.type} (${sig.severity})`);
@@ -385,6 +412,15 @@ const commands: Record<string, CommandHandler> = {
   },
 
   diff: async (args: string[]) => {
+    // Check license
+    const { isFeatureAllowed } = await import("../engines/licensing/license");
+    if (!isFeatureAllowed("diff")) {
+      console.log("\n🔒 Diff comparison is a PRO feature.");
+      console.log("Upgrade to PRO or ENTERPRISE to unlock this feature.");
+      console.log("\nRun: cwy pricing\n");
+      return;
+    }
+
     const daysAgo = parseInt(args[0] || "1", 10);
     const current = getLastSnapshot();
     const past = getSnapshotDaysAgo(daysAgo);
@@ -572,6 +608,203 @@ const commands: Record<string, CommandHandler> = {
       process.exit(0);
     });
   },
+
+  // ============= LICENSING & PAYMENT COMMANDS =============
+
+  pricing: async () => {
+    const { getPricingInfo } = await import("../engines/licensing/license");
+    const pricing = getPricingInfo();
+
+    console.log("\n╔════════════════════════════════════════════════════════╗");
+    console.log("║              CWY PRICING & FEATURES                    ║");
+    console.log("╚════════════════════════════════════════════════════════╝\n");
+
+    pricing.forEach((tier) => {
+      console.log(`${tier.tier} - $${tier.price} (${tier.duration})`);
+      console.log("Features:");
+      tier.features.forEach((f) => console.log(`  • ${f}`));
+      console.log();
+    });
+
+    console.log("To purchase: cwy purchase <tier> <email>");
+    console.log("Example:     cwy purchase PRO you@example.com\n");
+  },
+
+  purchase: async (args: string[]) => {
+    if (args.length < 2) {
+      console.log("Usage: cwy purchase <tier> <email>");
+      console.log("Tiers: PRO, ENTERPRISE");
+      console.log("\nTo see pricing: cwy pricing");
+      return;
+    }
+
+    const tier = args[0].toUpperCase() as any;
+    const email = args[1];
+
+    if (!["PRO", "ENTERPRISE"].includes(tier)) {
+      console.log("Invalid tier. Use: PRO or ENTERPRISE");
+      return;
+    }
+
+    const { createPaymentSession } = await import("../engines/licensing/payment");
+    const result = await createPaymentSession(tier, email);
+
+    if (!result.success) {
+      console.log(`\n❌ ${result.message}\n`);
+      return;
+    }
+
+    console.log("\n✓ Payment session created successfully!");
+    if (result.checkoutUrl) {
+      console.log(`\nCheckout URL: ${result.checkoutUrl}`);
+      console.log("\nAfter payment, verify with: cwy verify-payment <session-id>\n");
+    }
+  },
+
+  "verify-payment": async (args: string[]) => {
+    if (args.length < 1) {
+      console.log("Usage: cwy verify-payment <session-id>");
+      return;
+    }
+
+    const sessionId = args[0];
+    const { verifyPayment } = await import("../engines/licensing/payment");
+    const result = verifyPayment(sessionId);
+
+    if (!result.success) {
+      console.log(`\n❌ ${result.message}\n`);
+      return;
+    }
+
+    console.log("\n╔════════════════════════════════════════════════════════╗");
+    console.log("║           LICENSE ACTIVATED SUCCESSFULLY!              ║");
+    console.log("╚════════════════════════════════════════════════════════╝\n");
+    console.log(`License Key: ${result.licenseKey}\n`);
+    console.log("Save this key in a safe place.");
+    console.log("All premium features are now unlocked!\n");
+    console.log("Run 'cwy license-info' to see your license details.\n");
+  },
+
+  "activate-license": async (args: string[]) => {
+    if (args.length < 1) {
+      console.log("Usage: cwy activate-license <license-key> [email]");
+      return;
+    }
+
+    const licenseKey = args[0];
+    const email = args[1];
+
+    console.log("\n🔍 Verifying license with server...");
+
+    const { verifyLicenseOnline, activateLicense } = await import("../engines/licensing/license");
+    const verification = await verifyLicenseOnline(licenseKey);
+
+    if (!verification.success) {
+      console.log(`\n❌ ${verification.message}\n`);
+      return;
+    }
+
+    console.log(`✓ License verified: ${verification.tier}\n`);
+
+    // Save to local database
+    const result = activateLicense(licenseKey, email);
+
+    if (!result.success) {
+      console.log(`\n❌ ${result.message}\n`);
+      return;
+    }
+
+    console.log(`✓ ${result.message}\n`);
+    console.log("All premium features are now available!");
+    console.log("Run 'cwy license-info' to see details.\n");
+  },
+
+  "license-info": async () => {
+    const { getActiveLicense, validateLicense } = await import("../engines/licensing/license");
+    const license = getActiveLicense();
+    const validation = validateLicense();
+
+    console.log("\n╔════════════════════════════════════════════════════════╗");
+    console.log("║                 LICENSE INFORMATION                    ║");
+    console.log("╚════════════════════════════════════════════════════════╝\n");
+
+    console.log(`Tier: ${license.tier}`);
+    console.log(`Status: ${validation.valid ? "✓ Active" : "✗ Expired/Invalid"}`);
+
+    if (license.email) {
+      console.log(`Email: ${license.email}`);
+    }
+
+    if (license.activatedAt) {
+      const activatedDate = new Date(license.activatedAt);
+      console.log(`Activated: ${activatedDate.toLocaleDateString()}`);
+    }
+
+    if (license.expiresAt) {
+      const expiresDate = new Date(license.expiresAt);
+      console.log(`Expires: ${expiresDate.toLocaleDateString()}`);
+      if (validation.daysRemaining !== undefined) {
+        console.log(`Days Remaining: ${validation.daysRemaining}`);
+      }
+    } else {
+      console.log("Expires: Never (Lifetime)");
+    }
+
+    if (license.tier === "FREE") {
+      console.log("\n💡 Upgrade to PRO or ENTERPRISE for more features!");
+      console.log("Run 'cwy pricing' to see available plans.\n");
+    } else {
+      console.log("\n✓ Thank you for supporting CWY!\n");
+    }
+  },
+
+  "configure-payment": async (args: string[]) => {
+    if (args.length < 1) {
+      console.log("\nUsage: cwy configure-payment <provider> [api-key]");
+      console.log("\nProviders:");
+      console.log("  stripe       - Stripe payment gateway (recommended)");
+      console.log("  utt          - UTT payment system");
+      console.log("  manual       - Manual verification\n");
+      return;
+    }
+
+    const provider = args[0] as "stripe" | "utt" | "manual";
+    const apiKey = args[1];
+
+    if (!["stripe", "utt", "manual"].includes(provider)) {
+      console.log("Invalid provider. Use: stripe, utt, or manual");
+      return;
+    }
+
+    const { savePaymentConfig } = await import("../engines/licensing/payment");
+    savePaymentConfig({
+      provider,
+      apiKey
+    });
+
+    console.log(`\n✓ Payment provider configured: ${provider}`);
+    if (provider !== "manual") {
+      console.log("API key saved to .cwy/payment-config.json\n");
+    }
+  },
+
+  "payment-stats": async () => {
+    const { getPaymentStats } = await import("../engines/licensing/payment");
+    const stats = getPaymentStats();
+
+    console.log("\n╔════════════════════════════════════════════════════════╗");
+    console.log("║               PAYMENT STATISTICS                       ║");
+    console.log("╚════════════════════════════════════════════════════════╝\n");
+
+    console.log(`Total Sessions: ${stats.totalSessions}`);
+    console.log(`Completed Payments: ${stats.completedPayments}`);
+    console.log(`Total Revenue: $${(stats.totalRevenue / 100).toFixed(2)}\n`);
+
+    console.log("By Tier:");
+    console.log(`  FREE: ${stats.byTier.FREE}`);
+    console.log(`  PRO: ${stats.byTier.PRO}`);
+    console.log(`  ENTERPRISE: ${stats.byTier.ENTERPRISE}\n`);
+  },
 };
 
 function printHelp() {
@@ -593,6 +826,20 @@ COMMANDS:
   watch          Watch for file changes and show live cwy value
   contribute <€> Record contribution (local)
   diff [days]    Compare snapshot with N days ago (default: 1)
+
+LICENSING & PAYMENT:
+  pricing               Show pricing for all tiers
+  purchase <tier> <email>  Purchase a license (PRO, ENTERPRISE)
+  verify-payment <session-id>  Verify payment and get license key
+  activate-license <key> [email]  Activate license with key
+  license-info          Show current license details
+  configure-payment <provider> [api-key]  Setup payment gateway
+  payment-stats         Show payment statistics (admin)
+
+TIERS:
+  FREE       - Basic features (scan, icon, status)
+  PRO        - Premium features (route, integrity, signals, diff)
+  ENTERPRISE - All features + export + priority support
 
 PHILOSOPHY:
   - Local memory, always

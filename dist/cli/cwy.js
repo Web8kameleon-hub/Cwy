@@ -66,13 +66,26 @@ const commands = {
             console.log(config.message);
             return;
         }
+        const { startProgress, startSpinner } = await Promise.resolve().then(() => __importStar(require("../engines/progress/progress")));
         const workspaceRoot = process.cwd();
-        console.log("Scanning workspace...");
-        const { modules, edges } = (0, topology_1.buildTopology)(workspaceRoot);
-        console.log("Detecting cycles...");
+        // Progress indicator for file scanning
+        let progress = null;
+        const onProgress = (current, total, file) => {
+            if (!progress) {
+                progress = startProgress("Scanning files", total);
+            }
+            progress.update(current, file);
+        };
+        const { modules, edges } = (0, topology_1.buildTopology)(workspaceRoot, onProgress);
+        if (progress) {
+            progress.finish(`Scanned ${modules.length} files`);
+        }
+        const spinner = startSpinner("Detecting cycles");
         const cycles = (0, cycles_1.detectCycles)(modules.map((m) => m.id), edges);
-        console.log("Checking integrity...");
+        spinner.stop(`Found ${cycles.length} cycles`);
+        const spinner2 = startSpinner("Checking integrity");
         const { orphans, missingLinks, conflicts } = (0, integrity_1.checkIntegrity)(modules, edges);
+        spinner2.stop(`Integrity check complete`);
         const snapshot = {
             generatedAt: new Date().toISOString(),
             modules,
@@ -81,18 +94,26 @@ const commands = {
             cycles,
         };
         // Calculate score
+        const entryPoints = modules.filter(m => m.layer === "entry").length;
+        const avgDepth = modules.length > 0 ? Math.ceil(edges.length / modules.length) : 0;
+        const project = (0, db_1.getProject)();
+        const firstScanDate = project?.created_at ? new Date(project.created_at) : new Date();
+        const daysSinceFirst = Math.floor((Date.now() - firstScanDate.getTime()) / (1000 * 60 * 60 * 24));
+        const agentModules = modules.filter(m => /agent|ai|llm|prompt/.test(m.path.toLowerCase())).length;
         const metrics = {
             modules: modules.length,
-            routes: 0, // TODO: implement route counting
-            depth: 3, // TODO: calculate graph depth
+            routes: entryPoints,
+            depth: avgDepth,
             cycles: cycles.length,
             conflicts: conflicts.length,
-            historyDays: 1, // TODO: count days since first scan
-            agents: 0,
+            historyDays: daysSinceFirst,
+            agents: agentModules,
         };
         const { score, category } = (0, score_1.evaluateProject)(metrics);
         // Save snapshot with score
+        const spinner3 = startSpinner("Saving snapshot");
         (0, db_1.saveSnapshot)(snapshot, score);
+        spinner3.stop("Snapshot saved");
         // Run integrity checks
         const bypassAttempts = Number((0, db_1.getSystemState)("bypass_attempts") || "0");
         const integrityCheck = (0, detection_1.runIntegrityChecks)(score, bypassAttempts);
@@ -106,13 +127,21 @@ const commands = {
         const integrityViolations = Number((0, db_1.getSystemState)("integrity_violations") || "0");
         const newMode = (0, modes_1.determineMode)(score, totalContributed, integrityViolations);
         (0, db_1.setSystemState)("mode", newMode);
-        console.log("\nScan complete.");
-        console.log(`Files: ${modules.length}`);
-        console.log(`Modules: ${snapshot.modules.filter((m) => m.package).length}`);
-        console.log(`Entry points: ${snapshot.modules.filter((m) => m.layer === "entry").length}`);
+        // Summary with better formatting
+        console.log("\n\u2713 Scan complete");
+        console.log(`  Files: ${modules.length}`);
+        console.log(`  Modules: ${snapshot.modules.filter((m) => m.package).length}`);
+        console.log(`  Entry points: ${snapshot.modules.filter((m) => m.layer === "entry").length}`);
+        console.log(`  Score: ${score.toFixed(1)}%`);
         if (orphans.length > 0 || missingLinks.length > 0 || cycles.length > 0) {
-            console.log("\nScan completed with gaps.");
-            console.log("Use: cwy integrity");
+            console.log("\n\u26A0 Integrity issues detected:");
+            if (orphans.length > 0)
+                console.log(`  - ${orphans.length} orphan modules`);
+            if (cycles.length > 0)
+                console.log(`  - ${cycles.length} cycles`);
+            if (missingLinks.length > 0)
+                console.log(`  - ${missingLinks.length} missing links`);
+            console.log("\nRun: cwy integrity");
         }
     },
     icon: async () => {
@@ -152,6 +181,14 @@ const commands = {
         }
     },
     route: async (args) => {
+        // Check license
+        const { isFeatureAllowed } = await Promise.resolve().then(() => __importStar(require("../engines/licensing/license")));
+        if (!isFeatureAllowed("route")) {
+            console.log("\n🔒 Route pathfinding is a PRO feature.");
+            console.log("Upgrade to PRO or ENTERPRISE to unlock this feature.");
+            console.log("\nRun: cwy pricing\n");
+            return;
+        }
         const snapshot = (0, db_1.getLastSnapshot)();
         if (!snapshot) {
             console.log("No snapshot. Run `cwy scan` first.");
@@ -177,6 +214,14 @@ const commands = {
         console.log(`Missing links: ${missingLinks.length}`);
     },
     integrity: async () => {
+        // Check license
+        const { isFeatureAllowed } = await Promise.resolve().then(() => __importStar(require("../engines/licensing/license")));
+        if (!isFeatureAllowed("integrity")) {
+            console.log("\n🔒 Integrity reports are a PRO feature.");
+            console.log("Upgrade to PRO or ENTERPRISE to unlock this feature.");
+            console.log("\nRun: cwy pricing\n");
+            return;
+        }
         const snapshot = (0, db_1.getLastSnapshot)();
         if (!snapshot) {
             console.log("No snapshot. Run `cwy scan` first.");
@@ -205,6 +250,14 @@ const commands = {
         }
     },
     signals: async () => {
+        // Check license
+        const { isFeatureAllowed } = await Promise.resolve().then(() => __importStar(require("../engines/licensing/license")));
+        if (!isFeatureAllowed("signals")) {
+            console.log("\n🔒 Signals detection is a PRO feature.");
+            console.log("Upgrade to PRO or ENTERPRISE to unlock this feature.");
+            console.log("\nRun: cwy pricing\n");
+            return;
+        }
         const snapshot = (0, db_1.getLastSnapshot)();
         if (!snapshot) {
             console.log("No snapshot. Run `cwy scan` first.");
@@ -332,6 +385,14 @@ const commands = {
         }
     },
     diff: async (args) => {
+        // Check license
+        const { isFeatureAllowed } = await Promise.resolve().then(() => __importStar(require("../engines/licensing/license")));
+        if (!isFeatureAllowed("diff")) {
+            console.log("\n🔒 Diff comparison is a PRO feature.");
+            console.log("Upgrade to PRO or ENTERPRISE to unlock this feature.");
+            console.log("\nRun: cwy pricing\n");
+            return;
+        }
         const daysAgo = parseInt(args[0] || "1", 10);
         const current = (0, db_1.getLastSnapshot)();
         const past = (0, db_1.getSnapshotDaysAgo)(daysAgo);
@@ -366,6 +427,288 @@ const commands = {
         // Human-readable output
         console.log(formatOverview(overview));
     },
+    search: async (args) => {
+        if (args.length === 0) {
+            console.log("Usage: cwy search <query> [--files] [--nodes]");
+            return;
+        }
+        const snapshot = (0, db_1.getLastSnapshot)();
+        if (!snapshot) {
+            console.log("No system data available.");
+            console.log("Run: cwy scan");
+            return;
+        }
+        const query = args[0];
+        const filesOnly = args.includes("--files");
+        const nodesOnly = args.includes("--nodes");
+        const asJson = args.includes("--json");
+        const { search: searchEngine, formatSearchResult } = await Promise.resolve().then(() => __importStar(require("../engines/search/search")));
+        // Prepare searchable data
+        const files = snapshot.modules.map((m) => ({
+            path: m.path,
+            language: m.metadata?.language || "Unknown",
+            loc: m.metadata?.loc || 0,
+        }));
+        const nodes = snapshot.modules.map((m) => ({
+            id: m.id,
+            label: m.name,
+        }));
+        const results = searchEngine(query, files, nodes, {
+            filesOnly,
+            nodesOnly,
+            limit: 20,
+        });
+        if (asJson) {
+            console.log(JSON.stringify(results, null, 2));
+            return;
+        }
+        if (results.length === 0) {
+            console.log(`No results for "${query}"`);
+            return;
+        }
+        console.log(`\nSearch results for "${query}":\n`);
+        results.forEach((item, i) => {
+            console.log(`${i + 1}. ${formatSearchResult(item)}`);
+        });
+        console.log(`\nFound ${results.length} result(s)`);
+    },
+    trace: async (args) => {
+        if (args.length < 2) {
+            console.log("Usage: cwy trace file <path>");
+            console.log("       cwy trace node <pkg>");
+            return;
+        }
+        const snapshot = (0, db_1.getLastSnapshot)();
+        if (!snapshot) {
+            console.log("No system data available.");
+            console.log("Run: cwy scan");
+            return;
+        }
+        const subcommand = args[0];
+        const target = args[1];
+        const asJson = args.includes("--json");
+        if (subcommand === "file") {
+            const { traceFile, formatFileTrace } = await Promise.resolve().then(() => __importStar(require("../engines/trace/file")));
+            const trace = traceFile(snapshot, target);
+            if (!trace) {
+                console.log(`File not found: ${target}`);
+                return;
+            }
+            if (asJson) {
+                console.log(JSON.stringify(trace, null, 2));
+                return;
+            }
+            console.log(formatFileTrace(trace));
+        }
+        else if (subcommand === "node") {
+            console.log("Node tracing coming soon...");
+        }
+        else {
+            console.log("Unknown trace subcommand. Use 'file' or 'node'.");
+        }
+    },
+    fix: async (args) => {
+        const snapshot = (0, db_1.getLastSnapshot)();
+        if (!snapshot) {
+            console.log("No system data available.");
+            console.log("Run: cwy scan");
+            return;
+        }
+        const shouldApply = args.includes("--apply");
+        const asJson = args.includes("--json");
+        const { detectFixes, formatFixReport } = await Promise.resolve().then(() => __importStar(require("../engines/fix/detect")));
+        const report = detectFixes(snapshot, process.cwd());
+        if (shouldApply) {
+            const { applyFixes, formatApplyResult } = await Promise.resolve().then(() => __importStar(require("../engines/fix/apply")));
+            const result = applyFixes(report, process.cwd(), false);
+            if (asJson) {
+                console.log(JSON.stringify(result, null, 2));
+                return;
+            }
+            console.log(formatApplyResult(result));
+        }
+        else {
+            if (asJson) {
+                console.log(JSON.stringify(report, null, 2));
+                return;
+            }
+            console.log(formatFixReport(report));
+        }
+    },
+    watch: async () => {
+        const snapshot = (0, db_1.getLastSnapshot)();
+        if (!snapshot) {
+            console.log("No system data available.");
+            console.log("Run: cwy scan");
+            return;
+        }
+        const { startWatch } = await Promise.resolve().then(() => __importStar(require("../engines/watch/watch")));
+        const watcher = startWatch(process.cwd());
+        // Handle Ctrl+C gracefully
+        process.on("SIGINT", () => {
+            watcher.stop();
+            process.exit(0);
+        });
+    },
+    // ============= LICENSING & PAYMENT COMMANDS =============
+    pricing: async () => {
+        const { getPricingInfo } = await Promise.resolve().then(() => __importStar(require("../engines/licensing/license")));
+        const pricing = getPricingInfo();
+        console.log("\n╔════════════════════════════════════════════════════════╗");
+        console.log("║              CWY PRICING & FEATURES                    ║");
+        console.log("╚════════════════════════════════════════════════════════╝\n");
+        pricing.forEach((tier) => {
+            console.log(`${tier.tier} - $${tier.price} (${tier.duration})`);
+            console.log("Features:");
+            tier.features.forEach((f) => console.log(`  • ${f}`));
+            console.log();
+        });
+        console.log("To purchase: cwy purchase <tier> <email>");
+        console.log("Example:     cwy purchase PRO you@example.com\n");
+    },
+    purchase: async (args) => {
+        if (args.length < 2) {
+            console.log("Usage: cwy purchase <tier> <email>");
+            console.log("Tiers: PRO, ENTERPRISE");
+            console.log("\nTo see pricing: cwy pricing");
+            return;
+        }
+        const tier = args[0].toUpperCase();
+        const email = args[1];
+        if (!["PRO", "ENTERPRISE"].includes(tier)) {
+            console.log("Invalid tier. Use: PRO or ENTERPRISE");
+            return;
+        }
+        const { createPaymentSession } = await Promise.resolve().then(() => __importStar(require("../engines/licensing/payment")));
+        const result = await createPaymentSession(tier, email);
+        if (!result.success) {
+            console.log(`\n❌ ${result.message}\n`);
+            return;
+        }
+        console.log("\n✓ Payment session created successfully!");
+        if (result.checkoutUrl) {
+            console.log(`\nCheckout URL: ${result.checkoutUrl}`);
+            console.log("\nAfter payment, verify with: cwy verify-payment <session-id>\n");
+        }
+    },
+    "verify-payment": async (args) => {
+        if (args.length < 1) {
+            console.log("Usage: cwy verify-payment <session-id>");
+            return;
+        }
+        const sessionId = args[0];
+        const { verifyPayment } = await Promise.resolve().then(() => __importStar(require("../engines/licensing/payment")));
+        const result = verifyPayment(sessionId);
+        if (!result.success) {
+            console.log(`\n❌ ${result.message}\n`);
+            return;
+        }
+        console.log("\n╔════════════════════════════════════════════════════════╗");
+        console.log("║           LICENSE ACTIVATED SUCCESSFULLY!              ║");
+        console.log("╚════════════════════════════════════════════════════════╝\n");
+        console.log(`License Key: ${result.licenseKey}\n`);
+        console.log("Save this key in a safe place.");
+        console.log("All premium features are now unlocked!\n");
+        console.log("Run 'cwy license-info' to see your license details.\n");
+    },
+    "activate-license": async (args) => {
+        if (args.length < 1) {
+            console.log("Usage: cwy activate-license <license-key> [email]");
+            return;
+        }
+        const licenseKey = args[0];
+        const email = args[1];
+        console.log("\n🔍 Verifying license with server...");
+        const { verifyLicenseOnline, activateLicense } = await Promise.resolve().then(() => __importStar(require("../engines/licensing/license")));
+        const verification = await verifyLicenseOnline(licenseKey);
+        if (!verification.success) {
+            console.log(`\n❌ ${verification.message}\n`);
+            return;
+        }
+        console.log(`✓ License verified: ${verification.tier}\n`);
+        // Save to local database
+        const result = activateLicense(licenseKey, email);
+        if (!result.success) {
+            console.log(`\n❌ ${result.message}\n`);
+            return;
+        }
+        console.log(`✓ ${result.message}\n`);
+        console.log("All premium features are now available!");
+        console.log("Run 'cwy license-info' to see details.\n");
+    },
+    "license-info": async () => {
+        const { getActiveLicense, validateLicense } = await Promise.resolve().then(() => __importStar(require("../engines/licensing/license")));
+        const license = getActiveLicense();
+        const validation = validateLicense();
+        console.log("\n╔════════════════════════════════════════════════════════╗");
+        console.log("║                 LICENSE INFORMATION                    ║");
+        console.log("╚════════════════════════════════════════════════════════╝\n");
+        console.log(`Tier: ${license.tier}`);
+        console.log(`Status: ${validation.valid ? "✓ Active" : "✗ Expired/Invalid"}`);
+        if (license.email) {
+            console.log(`Email: ${license.email}`);
+        }
+        if (license.activatedAt) {
+            const activatedDate = new Date(license.activatedAt);
+            console.log(`Activated: ${activatedDate.toLocaleDateString()}`);
+        }
+        if (license.expiresAt) {
+            const expiresDate = new Date(license.expiresAt);
+            console.log(`Expires: ${expiresDate.toLocaleDateString()}`);
+            if (validation.daysRemaining !== undefined) {
+                console.log(`Days Remaining: ${validation.daysRemaining}`);
+            }
+        }
+        else {
+            console.log("Expires: Never (Lifetime)");
+        }
+        if (license.tier === "FREE") {
+            console.log("\n💡 Upgrade to PRO or ENTERPRISE for more features!");
+            console.log("Run 'cwy pricing' to see available plans.\n");
+        }
+        else {
+            console.log("\n✓ Thank you for supporting CWY!\n");
+        }
+    },
+    "configure-payment": async (args) => {
+        if (args.length < 1) {
+            console.log("\nUsage: cwy configure-payment <provider> [api-key]");
+            console.log("\nProviders:");
+            console.log("  stripe       - Stripe payment gateway (recommended)");
+            console.log("  utt          - UTT payment system");
+            console.log("  manual       - Manual verification\n");
+            return;
+        }
+        const provider = args[0];
+        const apiKey = args[1];
+        if (!["stripe", "utt", "manual"].includes(provider)) {
+            console.log("Invalid provider. Use: stripe, utt, or manual");
+            return;
+        }
+        const { savePaymentConfig } = await Promise.resolve().then(() => __importStar(require("../engines/licensing/payment")));
+        savePaymentConfig({
+            provider,
+            apiKey
+        });
+        console.log(`\n✓ Payment provider configured: ${provider}`);
+        if (provider !== "manual") {
+            console.log("API key saved to .cwy/payment-config.json\n");
+        }
+    },
+    "payment-stats": async () => {
+        const { getPaymentStats } = await Promise.resolve().then(() => __importStar(require("../engines/licensing/payment")));
+        const stats = getPaymentStats();
+        console.log("\n╔════════════════════════════════════════════════════════╗");
+        console.log("║               PAYMENT STATISTICS                       ║");
+        console.log("╚════════════════════════════════════════════════════════╝\n");
+        console.log(`Total Sessions: ${stats.totalSessions}`);
+        console.log(`Completed Payments: ${stats.completedPayments}`);
+        console.log(`Total Revenue: $${(stats.totalRevenue / 100).toFixed(2)}\n`);
+        console.log("By Tier:");
+        console.log(`  FREE: ${stats.byTier.FREE}`);
+        console.log(`  PRO: ${stats.byTier.PRO}`);
+        console.log(`  ENTERPRISE: ${stats.byTier.ENTERPRISE}\n`);
+    },
 };
 function printHelp() {
     console.log(`
@@ -380,8 +723,26 @@ COMMANDS:
   signals        Show active signals
   status         Show project status and mode
   overview       Complete system snapshot (chart + Postman view contract)
+  search <query> Find files and nodes (--files, --nodes, --json)
+  trace file|node <target>  Show routes, impact, usage (--json)
+  fix            Detect missing routes, unused files, docs (--apply, --json)
+  watch          Watch for file changes and show live cwy value
   contribute <€> Record contribution (local)
   diff [days]    Compare snapshot with N days ago (default: 1)
+
+LICENSING & PAYMENT:
+  pricing               Show pricing for all tiers
+  purchase <tier> <email>  Purchase a license (PRO, ENTERPRISE)
+  verify-payment <session-id>  Verify payment and get license key
+  activate-license <key> [email]  Activate license with key
+  license-info          Show current license details
+  configure-payment <provider> [api-key]  Setup payment gateway
+  payment-stats         Show payment statistics (admin)
+
+TIERS:
+  FREE       - Basic features (scan, icon, status)
+  PRO        - Premium features (route, integrity, signals, diff)
+  ENTERPRISE - All features + export + priority support
 
 PHILOSOPHY:
   - Local memory, always
@@ -394,7 +755,7 @@ async function main() {
     // Verify binary signature on startup (production only)
     const signatureCheck = (0, signing_1.verifyBinarySignature)();
     if (!signatureCheck.valid) {
-        console.error("\n⚠️  CWY integrity verification failed.");
+        console.error("\n\u26A0  CWY integrity verification failed.");
         console.error(`Reason: ${signatureCheck.reason}`);
         console.error("\nThis binary may be:");
         console.error("  - Modified without authorization");
