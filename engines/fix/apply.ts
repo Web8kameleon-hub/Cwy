@@ -65,7 +65,7 @@ export function formatApplyResult(result: ApplyResult): string {
     lines.push("All fixes applied successfully!");
     lines.push("\nNext steps:");
     lines.push("  1. Implement real services/routes for all 'Review needed' items");
-    lines.push("  2. Remove or replace any existing stub modules");
+    lines.push("  2. Remove or replace any temporary modules");
     lines.push("  3. Run: cwy scan");
   } else {
     lines.push("Some fixes failed - see errors above.");

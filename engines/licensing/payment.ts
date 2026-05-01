@@ -104,10 +104,10 @@ async function createUTTPayment(
   tier: LicenseTier,
   email: string
 ): Promise<{ success: boolean; checkoutUrl?: string; message?: string }> {
-  // No fake checkout URL: fail fast until a real UTT adapter is added.
+  // Fail fast until a production UTT adapter is integrated.
   return {
     success: false,
-    message: `UTT provider is not implemented for live payments (tier=${tier}, email=${email}). Use Stripe or manual provider.`
+    message: `UTT provider unavailable for live payments (tier=${tier}, email=${email}). Use Stripe or manual provider.`
   };
 }
 

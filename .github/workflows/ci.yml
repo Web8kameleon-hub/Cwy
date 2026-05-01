@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Enforce No-Fake Policy
+        run: npm run check:no-fake
+
       - name: Build
         run: npm run build --if-present
 

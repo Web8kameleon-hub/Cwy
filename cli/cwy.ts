@@ -558,7 +558,20 @@ const commands: Record<string, CommandHandler> = {
 
       console.log(formatFileTrace(trace));
     } else if (subcommand === "node") {
-      console.log("Node tracing coming soon...");
+      const { traceNode, formatNodeTrace } = await import("../engines/trace/node");
+      const trace = traceNode(snapshot, target);
+
+      if (!trace) {
+        console.log(`Node/package not found: ${target}`);
+        return;
+      }
+
+      if (asJson) {
+        console.log(JSON.stringify(trace, null, 2));
+        return;
+      }
+
+      console.log(formatNodeTrace(trace));
     } else {
       console.log("Unknown trace subcommand. Use 'file' or 'node'.");
     }

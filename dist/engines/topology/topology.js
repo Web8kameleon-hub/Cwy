@@ -36,7 +36,6 @@ function buildTopology(workspaceRoot, onProgress) {
         // Use imports from enhanced scanner
         for (const imp of fileInfo.imports) {
             if (imp.startsWith(".") || imp.startsWith("..")) {
-                const absPath = (0, path_1.join)(workspaceRoot, (0, path_1.dirname)(relPath), imp);
                 const resolved = resolveImportPath((0, path_1.dirname)((0, path_1.join)(workspaceRoot, relPath)), imp, workspaceRoot);
                 if (resolved) {
                     edges.push({
@@ -46,6 +45,17 @@ function buildTopology(workspaceRoot, onProgress) {
                         kind: "import",
                         required: true,
                         status: "ok",
+                    });
+                }
+                else {
+                    const missingTarget = makeMissingImportId((0, path_1.dirname)(relPath), imp);
+                    edges.push({
+                        id: `${id}->${missingTarget}`,
+                        from: id,
+                        to: missingTarget,
+                        kind: "import",
+                        required: true,
+                        status: "missing",
                     });
                 }
             }
@@ -150,7 +160,9 @@ function resolveImportPath(fromDir, importSpec, workspaceRoot) {
             return (0, path_1.relative)(workspaceRoot, candidate).split(path_1.sep).join("/");
         }
     }
-    // If can't resolve, return as-is (will be caught by integrity engine)
-    return (0, path_1.relative)(workspaceRoot, (0, path_1.join)(fromDir, importSpec)).split(path_1.sep).join("/");
+    return null;
+}
+function makeMissingImportId(fromRelDir, importSpec) {
+    return `missing:${fromRelDir.replace(/\\/g, "/")}:${importSpec}`;
 }
 //# sourceMappingURL=topology.js.map

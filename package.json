@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "scripts": {
+    "check:no-fake": "node ./scripts/enforce-no-fake.js",
     "build": "tsc -p ./tsconfig.json",
     "dev": "ts-node ./cli/cwy.ts --help"
   },

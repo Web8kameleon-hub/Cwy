@@ -1,0 +1,8 @@
+[
+  {
+    "pathPattern": "**/tests/**",
+    "pattern": "mock|fake|placeholder|demo",
+    "reason": "Test-only data patterns",
+    "expiresAt": "2099-12-31T23:59:59Z"
+  }
+]

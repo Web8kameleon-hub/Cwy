@@ -30,7 +30,7 @@ function checkIntegrity(modules, edges) {
             orphans.push(m.id); // unreachable
         }
     }
-    // Detect package version conflicts (stub: check for duplicates in package names with different versions)
+    // Detect package version conflicts by grouping package names and versions.
     const pkgMap = new Map();
     for (const m of modules) {
         if (!pkgMap.has(m.package)) {

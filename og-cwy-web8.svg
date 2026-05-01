@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="CWY by Web8 social preview">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#060b12" />
+      <stop offset="100%" stop-color="#0a1220" />
+    </linearGradient>
+    <radialGradient id="glowA" cx="0.1" cy="0.2" r="0.8">
+      <stop offset="0%" stop-color="#61f2ff" stop-opacity="0.28" />
+      <stop offset="100%" stop-color="#61f2ff" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="glowB" cx="0.9" cy="0.1" r="0.8">
+      <stop offset="0%" stop-color="#ffd166" stop-opacity="0.22" />
+      <stop offset="100%" stop-color="#ffd166" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <rect width="1200" height="630" fill="url(#glowA)" />
+  <rect width="1200" height="630" fill="url(#glowB)" />
+  <g opacity="0.25" stroke="#61f2ff" stroke-width="1">
+    <path d="M0 140 H1200" />
+    <path d="M0 280 H1200" />
+    <path d="M0 420 H1200" />
+    <path d="M0 560 H1200" />
+    <path d="M180 0 V630" />
+    <path d="M420 0 V630" />
+    <path d="M660 0 V630" />
+    <path d="M900 0 V630" />
+  </g>
+  <g transform="translate(90 110)">
+    <text x="0" y="0" fill="#61f2ff" font-size="26" font-family="Orbitron, Arial, sans-serif" letter-spacing="2">CWY / WEB8</text>
+    <text x="0" y="92" fill="#eaf6ff" font-size="62" font-family="Orbitron, Arial, sans-serif" font-weight="800">API Graph Intelligence</text>
+    <text x="0" y="160" fill="#eaf6ff" font-size="52" font-family="Orbitron, Arial, sans-serif" font-weight="700">Licensing Engine &amp; Usage Billing</text>
+    <text x="0" y="230" fill="#90a4b7" font-size="28" font-family="Rajdhani, Arial, sans-serif">Real-time licensing, Stripe automation, Web8 observability, and pay-how-you-use monetization.</text>
+  </g>
+  <g transform="translate(92 418)">
+    <rect x="0" y="0" width="252" height="84" rx="18" fill="rgba(12,21,34,0.78)" stroke="#61f2ff" />
+    <text x="24" y="33" fill="#90a4b7" font-size="18" font-family="Rajdhani, Arial, sans-serif">Platform</text>
+    <text x="24" y="63" fill="#eaf6ff" font-size="28" font-family="Rajdhani, Arial, sans-serif" font-weight="700">API-first Web8</text>
+  </g>
+  <g transform="translate(382 418)">
+    <rect x="0" y="0" width="252" height="84" rx="18" fill="rgba(12,21,34,0.78)" stroke="#61f2ff" />
+    <text x="24" y="33" fill="#90a4b7" font-size="18" font-family="Rajdhani, Arial, sans-serif">Telemetry</text>
+    <text x="24" y="63" fill="#eaf6ff" font-size="28" font-family="Rajdhani, Arial, sans-serif" font-weight="700">Clisonix Live</text>
+  </g>
+  <g transform="translate(672 418)">
+    <rect x="0" y="0" width="252" height="84" rx="18" fill="rgba(12,21,34,0.78)" stroke="#ffd166" />
+    <text x="24" y="33" fill="#90a4b7" font-size="18" font-family="Rajdhani, Arial, sans-serif">Ownership</text>
+    <text x="24" y="63" fill="#eaf6ff" font-size="28" font-family="Rajdhani, Arial, sans-serif" font-weight="700">ABA GmbH</text>
+  </g>
+  <g transform="translate(988 380)">
+    <circle cx="70" cy="70" r="58" fill="none" stroke="#61f2ff" stroke-width="6" />
+    <path d="M22 71 C46 34, 94 34, 118 71 C94 108, 46 108, 22 71 Z" fill="none" stroke="#ffd166" stroke-width="6" />
+    <text x="38" y="82" fill="#eaf6ff" font-size="54" font-family="Orbitron, Arial, sans-serif" font-weight="800">C</text>
+  </g>
+</svg>

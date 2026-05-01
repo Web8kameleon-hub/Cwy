@@ -38,17 +38,60 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.checkAbuseAtScale = checkAbuseAtScale;
 exports.runIntegrityChecks = runIntegrityChecks;
 const fs = __importStar(require("fs"));
+const crypto = __importStar(require("crypto"));
 const path = __importStar(require("path"));
 /**
- * Check binary signature (simplified for demo - real impl needs signing infra).
+ * Check integrity of critical files against local baseline hashes.
  */
 function checkBinarySignature() {
-    // In production: verify binary checksum/signature against known good hash
-    // For now, placeholder that always passes
-    // Real implementation would:
-    // 1. Compute SHA256 of cwy binary
-    // 2. Compare against embedded signature
-    // 3. Flag if mismatch
+    const projectRoot = path.join(__dirname, "../..");
+    const baselinePath = path.join(projectRoot, ".cwy", "integrity-baseline.json");
+    if (!fs.existsSync(baselinePath)) {
+        return {
+            type: "tampering",
+            severity: "medium",
+            details: "Integrity baseline missing (.cwy/integrity-baseline.json)",
+        };
+    }
+    try {
+        const raw = fs.readFileSync(baselinePath, "utf8");
+        const baseline = JSON.parse(raw);
+        const criticalFiles = ["package.json", "README.md", "cli/cwy.ts"];
+        for (const relPath of criticalFiles) {
+            const filePath = path.join(projectRoot, relPath);
+            if (!fs.existsSync(filePath)) {
+                return {
+                    type: "tampering",
+                    severity: "high",
+                    details: `Critical file missing: ${relPath}`,
+                };
+            }
+            const fileBytes = fs.readFileSync(filePath);
+            const digest = crypto.createHash("sha256").update(fileBytes).digest("hex");
+            const expected = baseline[relPath];
+            if (!expected) {
+                return {
+                    type: "tampering",
+                    severity: "medium",
+                    details: `Baseline hash missing for: ${relPath}`,
+                };
+            }
+            if (digest !== expected) {
+                return {
+                    type: "tampering",
+                    severity: "high",
+                    details: `Hash mismatch detected for: ${relPath}`,
+                };
+            }
+        }
+    }
+    catch (error) {
+        return {
+            type: "tampering",
+            severity: "medium",
+            details: `Integrity baseline invalid: ${String(error)}`,
+        };
+    }
     return null;
 }
 /**

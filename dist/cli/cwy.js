@@ -250,6 +250,12 @@ const commands = {
         }
     },
     signals: async () => {
+        // --source=clisonix → pull live signals from the Clisonix AGI platform
+        if (process.argv.includes("--source=clisonix")) {
+            const { printClisonixSignals } = await Promise.resolve().then(() => __importStar(require("../engines/signals/clisonix-bridge")));
+            await printClisonixSignals();
+            return;
+        }
         // Check license
         const { isFeatureAllowed } = await Promise.resolve().then(() => __importStar(require("../engines/licensing/license")));
         if (!isFeatureAllowed("signals")) {
@@ -501,7 +507,17 @@ const commands = {
             console.log(formatFileTrace(trace));
         }
         else if (subcommand === "node") {
-            console.log("Node tracing coming soon...");
+            const { traceNode, formatNodeTrace } = await Promise.resolve().then(() => __importStar(require("../engines/trace/node")));
+            const trace = traceNode(snapshot, target);
+            if (!trace) {
+                console.log(`Node/package not found: ${target}`);
+                return;
+            }
+            if (asJson) {
+                console.log(JSON.stringify(trace, null, 2));
+                return;
+            }
+            console.log(formatNodeTrace(trace));
         }
         else {
             console.log("Unknown trace subcommand. Use 'file' or 'node'.");

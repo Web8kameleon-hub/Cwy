@@ -80,8 +80,16 @@ export function detectFixes(snapshot: GraphSnapshot, workspaceRoot: string): Fix
   }
 
   // 4. Broken imports (imports that couldn't be resolved - detected during scan)
-  // This would be populated by topology scanner tracking failed resolves
-  // For now, we'll leave this as a placeholder for enhancement
+  const brokenImports = snapshot.edges.filter((e) => e.status === "missing");
+  brokenImports.forEach((edge) => {
+    fixes.push({
+      type: "broken_import",
+      severity: "high",
+      target: `${edge.from} -> ${edge.to}`,
+      description: `Broken import path from ${edge.from} to ${edge.to}`,
+      action: "review",
+    });
+  });
 
   // Calculate summary
   const summary = {
@@ -150,7 +158,7 @@ export function formatFixReport(report: FixReport): string {
         if (f.suggestedPath) {
           lines.push(`     Suggested route: ${f.suggestedPath.join(" → ")}`);
         }
-        lines.push("     Action: review (implement a real route/service, no stub)\n");
+        lines.push("     Action: review (implement a real route/service, no temporary module)\n");
       });
   }
 

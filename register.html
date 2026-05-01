@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CWY Register - Google Auth</title>
+  <meta name="description" content="Register your CWY account with Google Authentication and create your user profile." />
+  <link rel="canonical" href="https://cwy.clisonix.com/register.html" />
+  <link rel="icon" type="image/svg+xml" href="cwy-icon.svg" />
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    :root {
+      --bg: #060b12;
+      --bg2: #0a1220;
+      --panel: rgba(12, 21, 34, 0.84);
+      --line: rgba(97, 242, 255, 0.28);
+      --text: #eaf6ff;
+      --muted: #8ea3b7;
+      --accent: #61f2ff;
+      --accent2: #ffd166;
+      --ok: #26d07c;
+      --danger: #ff8c61;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: "Rajdhani", "Segoe UI", Arial, sans-serif;
+      background:
+        radial-gradient(900px 480px at 90% -10%, rgba(97, 242, 255, 0.14), transparent 60%),
+        radial-gradient(900px 500px at -10% 0%, rgba(255, 209, 102, 0.12), transparent 56%),
+        linear-gradient(160deg, var(--bg), var(--bg2));
+      display: grid;
+      place-items: center;
+      padding: 18px;
+    }
+
+    .shell {
+      width: min(900px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--panel);
+      box-shadow: 0 22px 68px rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+    }
+
+    .head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(7, 13, 22, 0.7);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--ok);
+      box-shadow: 0 0 0 0 rgba(38, 208, 124, 0.75);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(38, 208, 124, 0.75); }
+      70% { box-shadow: 0 0 0 11px rgba(38, 208, 124, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(38, 208, 124, 0); }
+    }
+
+    .head a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .body {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 0;
+    }
+
+    .left,
+    .right {
+      padding: 24px;
+    }
+
+    .left {
+      border-right: 1px solid var(--line);
+      background: rgba(8, 14, 24, 0.65);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      line-height: 1.1;
+      font-size: clamp(28px, 4vw, 42px);
+      font-family: "Orbitron", "Segoe UI", sans-serif;
+      letter-spacing: 0.02em;
+    }
+
+    .lead {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .features {
+      margin: 0;
+      padding-left: 18px;
+      color: #d6e8f8;
+      line-height: 1.5;
+      font-size: 16px;
+    }
+
+    .api-note {
+      margin-top: 18px;
+      border: 1px solid rgba(255, 209, 102, 0.35);
+      border-radius: 12px;
+      background: rgba(255, 209, 102, 0.1);
+      color: #ffe8b8;
+      padding: 10px 12px;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .form-row {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    label {
+      font-size: 14px;
+      color: #d5e8f8;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    input {
+      width: 100%;
+      border: 1px solid rgba(147, 176, 202, 0.3);
+      border-radius: 10px;
+      background: rgba(4, 10, 17, 0.82);
+      color: var(--text);
+      padding: 11px 12px;
+      font-size: 16px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(97, 242, 255, 0.12);
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 11px 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      color: #061420;
+      background: linear-gradient(100deg, var(--accent), #9cf4ff);
+      box-shadow: 0 10px 24px rgba(97, 242, 255, 0.24);
+    }
+
+    .checkbox {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .checkbox input {
+      width: 16px;
+      height: 16px;
+      margin-top: 2px;
+      accent-color: var(--accent);
+    }
+
+    .google-box {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px dashed rgba(147, 176, 202, 0.24);
+    }
+
+    .google-title {
+      margin: 0 0 10px;
+      font-size: 15px;
+      color: var(--muted);
+    }
+
+    .status {
+      margin-top: 10px;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      display: none;
+      line-height: 1.45;
+      border: 1px solid transparent;
+    }
+
+    .status.ok {
+      display: block;
+      color: #bff6d9;
+      background: rgba(38, 208, 124, 0.12);
+      border-color: rgba(38, 208, 124, 0.3);
+    }
+
+    .status.error {
+      display: block;
+      color: #ffd1c1;
+      background: rgba(255, 140, 97, 0.1);
+      border-color: rgba(255, 140, 97, 0.28);
+    }
+
+    .mini {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 860px) {
+      .body { grid-template-columns: 1fr; }
+      .left { border-right: 0; border-bottom: 1px solid var(--line); }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="head">
+      <div class="brand"><span class="dot"></span> CWY / User Registration</div>
+      <a href="/">Back to Home</a>
+    </header>
+
+    <section class="body">
+      <article class="left">
+        <h1>Create Your CWY Account</h1>
+        <p class="lead">Register your user profile and continue with Google Authentication in one flow.</p>
+        <ul class="features">
+          <li>Account setup with real name and business email</li>
+          <li>Google ID token verification through backend endpoint</li>
+          <li>Session-ready onboarding for API and dashboard access</li>
+        </ul>
+        <div class="api-note">
+          Backend endpoint expected: POST /api/auth/google/register with idToken, email, name and company fields.
+        </div>
+      </article>
+
+      <article class="right">
+        <form id="register-form">
+          <div class="form-row">
+            <label for="name">Full Name</label>
+            <input id="name" name="name" type="text" autocomplete="name" required />
+          </div>
+
+          <div class="form-row">
+            <label for="email">Business Email</label>
+            <input id="email" name="email" type="email" autocomplete="email" required />
+          </div>
+
+          <div class="form-row">
+            <label for="company">Company</label>
+            <input id="company" name="company" type="text" autocomplete="organization" required />
+          </div>
+
+          <div class="checkbox">
+            <input id="terms" type="checkbox" required />
+            <label for="terms">I accept account creation terms and consent to secure authentication processing.</label>
+          </div>
+
+          <div class="actions">
+            <button type="submit" class="btn btn-primary">Create Account</button>
+          </div>
+
+          <div class="google-box">
+            <p class="google-title">Continue with Google</p>
+            <div id="google-signin"></div>
+          </div>
+
+          <div id="status" class="status"></div>
+          <div class="mini" id="mini-note">Registration API base: /api/auth/google/register</div>
+        </form>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      var endpoint = '/api/auth/google/register';
+      var status = document.getElementById('status');
+      var form = document.getElementById('register-form');
+      var formState = { name: '', email: '', company: '' };
+
+      function show(type, text) {
+        status.className = 'status ' + type;
+        status.textContent = text;
+      }
+
+      function getClientId() {
+        var fromUrl = new URLSearchParams(window.location.search).get('google_client_id');
+        if (fromUrl) return fromUrl;
+        var fromMeta = document.querySelector('meta[name="google-signin-client_id"]');
+        if (fromMeta && fromMeta.content) return fromMeta.content;
+        return '';
+      }
+
+      function collectFormState() {
+        formState.name = document.getElementById('name').value.trim();
+        formState.email = document.getElementById('email').value.trim();
+        formState.company = document.getElementById('company').value.trim();
+      }
+
+      async function submitRegistration(payload) {
+        var response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          var text = await response.text();
+          throw new Error(text || 'Registration request failed');
+        }
+
+        return response.json().catch(function () { return {}; });
+      }
+
+      form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        collectFormState();
+
+        if (!document.getElementById('terms').checked) {
+          show('error', 'Please accept the terms to continue.');
+          return;
+        }
+
+        try {
+          await submitRegistration({
+            source: 'form',
+            name: formState.name,
+            email: formState.email,
+            company: formState.company
+          });
+          show('ok', 'Account details accepted. Continue with Google sign-in below to finish authentication.');
+        } catch (error) {
+          show('error', 'Unable to create account details. Please check backend endpoint availability.');
+        }
+      });
+
+      window.handleGoogleCredential = async function (googleResponse) {
+        collectFormState();
+
+        if (!formState.email || !formState.name || !formState.company) {
+          show('error', 'Complete the form fields before Google authentication.');
+          return;
+        }
+
+        try {
+          await submitRegistration({
+            source: 'google',
+            idToken: googleResponse.credential,
+            name: formState.name,
+            email: formState.email,
+            company: formState.company
+          });
+          show('ok', 'Google authentication completed. Your CWY account is now registered.');
+          setTimeout(function () { window.location.href = '/'; }, 1300);
+        } catch (error) {
+          show('error', 'Google authentication failed on backend verification.');
+        }
+      };
+
+      function initGoogle() {
+        var clientId = getClientId();
+        if (!clientId || !window.google || !window.google.accounts || !window.google.accounts.id) {
+          show('error', 'Google Sign-In is not configured. Add ?google_client_id=YOUR_CLIENT_ID to this URL.');
+          return;
+        }
+
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: window.handleGoogleCredential,
+          ux_mode: 'popup'
+        });
+
+        window.google.accounts.id.renderButton(
+          document.getElementById('google-signin'),
+          { theme: 'outline', size: 'large', shape: 'pill', width: 320, text: 'signup_with' }
+        );
+      }
+
+      window.addEventListener('load', initGoogle);
+    })();
+  </script>
+</body>
+</html>

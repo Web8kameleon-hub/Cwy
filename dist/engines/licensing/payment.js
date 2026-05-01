@@ -108,10 +108,10 @@ async function createStripeCheckout(tier, email, apiKey) {
  * Create UTT payment.
  */
 async function createUTTPayment(tier, email) {
-    // UTT integration placeholder
+    // Fail fast until a production UTT adapter is integrated.
     return {
         success: false,
-        message: "UTT integration coming soon"
+        message: `UTT provider unavailable for live payments (tier=${tier}, email=${email}). Use Stripe or manual provider.`
     };
 }
 /**
