@@ -469,7 +469,31 @@
           <p>Reserved namespace for CWY REST extensions.</p>
           <code>curl https://cwy.clisonix.com/api/cwy</code>
         </article>
+        <article class="card">
+          <h3><span class="method post">POST</span>/api/v1/export</h3>
+          <p>Export report in PDF, DOCX, or XLSX format (not TXT).</p>
+          <code>curl -X POST https://cwy.clisonix.com/api/v1/export
+-H "Content-Type: application/json"
+-d '{"query":"Your analysis","format":"pdf"}'</code>
+        </article>
+        <article class="card">
+          <h3><span class="method post">POST</span>/api/v1/chat</h3>
+          <p>Heavy queries with async timeout (30s). Supports streaming.</p>
+          <code>curl -X POST https://cwy.clisonix.com/api/v1/chat
+-H "Content-Type: application/json"
+-d '{"message":"Analyze system...","timeout":30}'</code>
+        </article>
       </div>
+    </section>
+
+    <section class="section" id="api-notes" style="margin-top:12px; padding:14px;">
+      <div class="kicker">API Constraints & Best Practices</div>
+      <ul class="ul" style="margin:8px 0 0;">
+        <li><strong>Export formats:</strong> PDF, DOCX, XLSX (not TXT)</li>
+        <li><strong>Heavy queries:</strong> Async processing with 30s timeout. Use <code>timeout</code> param or fallback to streaming</li>
+        <li><strong>WS events:</strong> Subscribe to <code>error</code>, <code>success</code>, <code>progress</code> event types</li>
+        <li><strong>Rate limits:</strong> PRO tier &rarr; 100 req/min; ENTERPRISE &rarr; unlimited</li>
+      </ul>
     </section>
 
     <section class="section" id="how">
