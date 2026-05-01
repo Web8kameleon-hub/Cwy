@@ -617,18 +617,27 @@ ENTERPRISE: + export</code>
     function renderComponents(data) {
       var grid = document.getElementById('cls-grid');
       if (!data.components || !data.components.length) return;
+      function parsePort(c) {
+        if (c.port != null) return c.port;
+        var endpoint = c.meta && c.meta.endpoint;
+        if (!endpoint) return '—';
+        var m = String(endpoint).match(/:(\d+)(?:\/|$)/);
+        return m ? Number(m[1]) : '—';
+      }
       grid.innerHTML = data.components.map(function(c) {
-        var ok    = c.online;
+        var ok    = typeof c.online === 'boolean' ? c.online : (c.status === 'online');
         var color = ok ? 'var(--ok)' : 'var(--warn)';
         var dot   = ok ? '●' : '○';
         var lat   = c.latencyMs != null ? c.latencyMs + 'ms' : '—';
-        var extra = c.name === 'Nin Engine' ? ' style="border-color:rgba(97,242,255,0.4)"' : '';
+        var name  = c.name || c.label || c.id || 'unknown';
+        var port  = parsePort(c);
+        var extra = name === 'Nin Engine' ? ' style="border-color:rgba(97,242,255,0.4)"' : '';
         return '<article class="card"' + extra + '>' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
-            '<span style="font-size:11px;font-family:Orbitron,sans-serif;color:var(--muted);">:' + c.port + '</span>' +
+            '<span style="font-size:11px;font-family:Orbitron,sans-serif;color:var(--muted);">:' + port + '</span>' +
             '<span style="color:' + color + ';font-size:16px;" title="' + (ok ? 'online' : 'offline') + '">' + dot + '</span>' +
           '</div>' +
-          '<div style="font-weight:700;font-size:15px;margin-bottom:2px;">' + c.name + '</div>' +
+          '<div style="font-weight:700;font-size:15px;margin-bottom:2px;">' + name + '</div>' +
           '<div style="font-size:12px;color:var(--muted);">' + (ok ? 'latency ' + lat : 'offline') + '</div>' +
         '</article>';
       }).join('');
@@ -653,6 +662,16 @@ ENTERPRISE: + export</code>
         .then(function(res) { if (!res.ok) throw new Error(); return res.json(); })
         .catch(function() { return Object.assign({}, DEMO_DATA, { fetchedAt: new Date().toISOString() }); })
         .then(function(data) {
+          if (data && data.ninData && !data.nin) {
+            data.nin = {
+              emotion: data.ninData.emotionalState || 'unknown',
+              intensity: 0.8,
+              reason: 'Live Clisonix telemetry',
+              systemHealth: data.ninData.systemHealth != null ? data.ninData.systemHealth : 1,
+              codeQuality: 0.95,
+              activityLevel: data.ninData.resourceLevel != null ? data.ninData.resourceLevel : 0.9
+            };
+          }
           renderComponents(data);
           if (data.nin) renderNin(data.nin);
           var footer = document.getElementById('cls-footer');
